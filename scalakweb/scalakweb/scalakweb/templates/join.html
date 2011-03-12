@@ -1,0 +1,6 @@
+<h4>Enter project ID (note that Your request must be accepted by project administrator)</h4>
+
+${h.form(h.url(controller='scalak_user', action='joinSubmit'), method='post')}
+Project id: ${h.text('project_id')}
+               ${h.submit('submit', 'Send request')}
+${h.end_form()}

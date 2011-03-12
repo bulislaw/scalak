@@ -1,0 +1,6 @@
+<h3>Enter user login (note that user must exists in Scalak)</h3>
+
+${h.form(h.url(controller='project', action='userAddSubmit'), method='post')}
+User login: ${h.text('user_login')}
+               ${h.submit('submit', 'Submit')}
+${h.end_form()}

@@ -1,0 +1,3 @@
+include scalakweb/config/deployment.ini_tmpl
+recursive-include scalakweb/public *
+recursive-include scalakweb/templates *

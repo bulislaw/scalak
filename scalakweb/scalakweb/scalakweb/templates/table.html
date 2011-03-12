@@ -1,0 +1,18 @@
+<table style="${c.style or ""}">
+    <thead>
+        <tr>
+            % for h in c.header:
+                <th style="padding: 10px" scope="col">${h}</th>
+            % endfor
+        </tr>
+    </thead>
+    <tbody>
+        % for row in c.rows:
+            <tr>
+                % for col in row:
+                    <td>${col}</td>
+                % endfor
+            </tr>
+        % endfor
+    </tbody>
+</table>

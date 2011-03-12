@@ -1,0 +1,124 @@
+#!/usr/bin/env python
+# -*-coding: utf-8 -*-
+
+# Scalak
+# Copyright 2010 Bartosz Szatkowski <bulislaw@linux.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+__version__ = 0.2
+__author__ = 'Bartosz Szatkowski <bulislaw@linux.com>'
+__license__ = 'GPL 3.0+'
+
+import getopt
+import getpass
+import sys
+import random
+from hashlib import sha1
+
+from scalak.utils import *
+
+
+def addUser(login, name, lastName, email, note, password=None):
+    """Adds user to database - when password is None then it will ask for it"""
+
+    if not login or not name or not lastName or not email:
+        raise ScalakError("You have to specify, at least login, name, " \
+                "last name and email.")
+
+    con = openDB()
+    c = con.cursor()
+    c.execute('select login from users where login=%s limit 1', (login,))
+
+    if c.fetchone():
+        raise ScalakError("User already exists")
+
+    if not password:
+        password = getpass.getpass()
+        password1 = getpass.getpass("Repeat password:")
+        if not password or not password1:
+            raise ScalakError("Password may not be empty")
+        if not password1 == password:
+            raise ScalakError("Passwords are not identical")
+
+    sha1pass = sha1()
+    sha1pass.update(password)
+    sha1pass = sha1pass.hexdigest()
+    htpass = htpasswd(password)
+
+    c.execute('insert into users values(%s, %s, %s, %s, %s,%s, %s)',
+        (login, name, lastName, email, htpass, sha1pass, note))
+    con.commit()
+    c.close()
+
+
+def removeUser(login):
+    """Removes user from Scalak - user must not be admin of any project"""
+    con = openDB()
+    c = con.cursor()
+    c.execute('select id from projects where admin=%s', (login,))
+    proj = c.fetchmany()
+    if proj:
+        raise ScalakError("Can't remove user {0}, user is admin of some projects: {1}"
+                .format(login, ', '.join([p[0] for p in proj])))
+        
+    c.execute('delete from user_project where user=%s', (login,))
+    c.execute('delete from users where login=%s', (login,))
+
+    con.commit()
+    c.close()
+
+def help():
+    print "Scalak-users scalak users administration tool\n\n" \
+            "Usage: scalak-users [add|remove|edit|help] <fields> \n" \
+            "\tadd      [-p plain textpassword] [-n note] login name lastName " \
+                    "email  - add user to data base\n" \
+            "\tremove   login - removes user from db - user must not be " \
+                    "admin of any project\n" \
+            "\tedit     not yet implemented \n\n"
+
+
+
+if __name__ == "__main__":
+    mode = sys.argv[1]
+
+    if mode == "add":
+        opt, arg = getopt.getopt(sys.argv[2:], 'n:p:')
+        if len(arg) != 4:
+            help()
+            sys.exit(1)
+        note = ""
+        passw = None
+        for o in opt:
+            if o[0] == '-n':
+                note = o[1]
+            if o[0] == '-p':
+                passw = o[1]
+
+        addUser(arg[0], arg[1], arg[2], arg[3], note, passw)
+
+    elif mode == "remove":
+        if len(sys.argv) < 3:
+            help()
+            sys.exit(1)
+        removeUser(sys.argv[2])
+
+    elif mode == "edit":
+        pass
+    elif mode == "help":
+        help()
+
+
+

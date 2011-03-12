@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+# -*-coding: utf-8 -*-
+
+# Scalak
+# Copyright 2010 Bartosz Szatkowski <bulislaw@linux.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+__version__ = 0.2
+__author__ = 'Bartosz Szatkowski <bulislaw@linux.com>'
+__license__ = 'GPL 3.0+'
+__imports__ = []
+
+import sys
+import os
+from ConfigParser import SafeConfigParser, Error
+from subprocess import call
+import getopt
+
+from scalak.utils import *
+from scalak.project import *
+from scalak.commands import *
+
+olduid = None
+
+def reloadApache():
+    try:
+        command = config.get("general", "apache_reload")
+    except Error:
+        command = "/etc/init.d/apache2 reload"
+    call(command, shell=True)
+
+def fixFilesOwner():
+    try:
+        dir = config.get("general", "projects_dir")
+    except Error:
+        dir = "/var/scalak/projects"
+    try:
+        user = config.get("general", "scalak_user")
+    except Error:
+        user = "www-data"
+    chown = "chown {0} {1} -R".format(user, dir)
+    call(chown, shell=True)
+
+def printMan():
+    print "Usage: {0} <project-id> <subcommand> [options] \n" \
+            .format(sys.argv[0])
+    for cls in common.__handlers__:
+        print cls.man()
+
+if __name__ == "__main__":
+    if len(sys.argv) < 3:
+        printMan()
+        sys.exit(1)
+
+    config = getConfig()
+
+    project = sys.argv[1]
+    action = sys.argv[2]
+
+
+    if not os.getuid() == 0 or not os.geteuid() == 0:
+        print >> sys.stderr, "Scalak-admin should be running as root. Quitting."
+        sys.exit(1)
+
+    state = 1
+    try:
+        for handler in common.__commands__.get(action.lower(), []):
+            state *= handler.execute(action, project, sys.argv[3:], config)
+    except ScalakError as err:
+        print >> sys.stderr, "Error:", err
+        sys.exit(1)
+
+    if state != 0:
+        printMan()
+        sys.exit(1)
+    
+    reloadApache()
+    fixFilesOwner()
+

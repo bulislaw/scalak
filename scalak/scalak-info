@@ -1,0 +1,210 @@
+#!/usr/bin/env python
+# -*-coding: utf-8 -*-
+
+# Scalak
+# Copyright 2010 Bartosz Szatkowski <bulislaw@linux.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+__version__ = 0.2
+__author__ = 'Bartosz Szatkowski <bulislaw@linux.com>'
+__license__ = 'GPL 3.0+'
+
+import sys
+from datetime import date
+
+from scalak.utils import *
+import getopt
+
+
+def help():
+    print "Scalak-info provides information about Scalak project, services " \
+            "and users\n\n" \
+            "Usage: scalak-info [project|user|help] <fields> \n" \
+            "\tproject [-a] [-D] [-A admin | id] - when no id is given " \
+            "lists all projects\n" \
+            "\t\t id - show info about project with given id \n" \
+            "\t\t -A admin - show info about projects with given admin \n" \
+            "\t\t -a - shows all project information\n" \
+            "\t\t -D - show only overdue projects \n\n" \
+            "\tuser [[-a]  [-e email |-n name | login] - without flags and " \
+            "login show all users\n"  \
+            "\t\t login - show info about user with given login \n" \
+            "\t\t -n name - show info about users with given last name \n" \
+            "\t\t -e email - show info about user with given email \n" \
+            "\t\t -a - shows all user data (with hashed passwords)\n\n" 
+
+
+def listProjects(id=None, admin=None, due=None, all=None):
+    con = openDB()
+    c = con.cursor()
+
+    if admin or id or all:
+        if admin:
+            res = c.execute("select * from projects where admin=%s", (admin,))
+        elif id:
+            res = c.execute("select * from projects where id=%s", (id,))
+        else:
+            res = c.execute("select * from projects")
+
+        res = c.fetchall()
+        for row in res:
+            if due and (not row[3] or row[3] > date.today()):
+                continue
+
+            print "Id: {0}\nAdmin: {1}\nCreate date: {2}\nDue date: {3}\n" \
+                    "Brief: {4}\nDescription: {5}\nActive: {6}\n" \
+                    .format(*row)
+
+            if all:
+                # Services connected to project
+                print "Project services:\n"
+
+                srv = c.execute("select distinct type, subtype, name from \
+                        services where project=%s order by type, subtype, \
+                        name", (row[0]))
+
+                if not srv:
+                    print "\tNo services registered"
+                else:
+                    print "{0:<15} {1:<15} {2}".format("Type", "Subtype", 
+                            "Name")
+
+                    for srv in c.fetchall():
+                        print "{0:<15} {1:<15} {2}".format(*srv)
+
+                print
+
+                # Project members
+                usr = c.execute("select user from user_project where \
+                        project=%s", (row[0],))
+                if usr:
+                    print "Members: {0}\n".format(", ".join( \
+                            [x[0] for x in c.fetchall()]))
+                else:
+                    print "No members\n"
+
+        sys.exit(0)
+
+
+    res = c.execute("select id, admin, brief, due_date from projects")
+    print "{0:<25}{1:<25}{2}\n".format("Id", "Administrator", "Brief")
+    for prj in c.fetchall():
+        if due and (not prj[3] or prj[3] > date.today()):
+            continue
+        print "{0:<25} {1:<25} {2}".format(*prj[:-1])
+    c.close()
+
+
+def listUsers(login=None, name=None, email=None, all=None):
+    con = openDB()
+    c = con.cursor()
+
+    if login or email or name:
+        if login:
+            res = c.execute("select * from users where login=%s", (login,))
+        if email:
+            res = c.execute("select * from users where email=%s", (email,))
+        if name:
+            res = c.execute("select * from users where last_name=%s", (name,))
+        if not res:
+            print "No such user"
+            sys.exit(1)
+        res = c.fetchall()
+        for row in res:
+            if not all:
+                print "Login: {0}\nName: {1} {2}\nEmail: {3}\nNote: {4}\n" \
+                        .format(row[0], row[1], row[2], row[3], row[6])
+            else:
+                print "Login: {0}\nName: {1} {2}\nEmail: {3}\nNote: {4}\n" \
+                        .format(row[0], row[1], row[2], row[3], row[6])
+                proj = c.execute("select project from user_project where \
+                        user=%s", (row[0],))
+                if proj:
+                    print "Projects: {0}\n".format(", ".join( \
+                            [x[0] for x in c.fetchall()]))
+                else:
+                    print "No projects\n"
+    else:
+        res = c.execute("select login, name, last_name from users")
+
+        print "{0:<25}{1:<25}{2}\n".format("Login", "Name", "Last name")
+        for prj in c.fetchall():
+            print "{0:<25} {1:<25} {2}".format(*prj)
+        c.close()
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        help()
+        sys.exit(1)
+
+    mode = sys.argv[1]
+
+    if mode == "project":
+
+        opt, arg = getopt.getopt(sys.argv[2:], "aDA:")
+
+        allInfo = False
+        if ("-a", "") in opt:
+            allInfo = True
+        overDue = False
+        if ("-D", "") in opt:
+            overDue = True
+
+
+        for o in opt: 
+            if o[0] == "-A":
+                listProjects(all=allInfo, due=overDue, admin=o[1])
+                sys.exit(0)
+
+        if not arg:
+            listProjects(all=allInfo, due=overDue)
+            sys.exit(0)
+
+        listProjects(all=allInfo, due=overDue, id=arg[0])
+        sys.exit(0)
+
+    if mode == "user":
+        if len(sys.argv) == 2:
+            listUsers()
+            sys.exit(0)
+
+        opt, arg = getopt.getopt(sys.argv[2:], "an:e:")
+
+        allInfo = False
+        if ("-a", "") in opt:
+            allInfo = True
+
+        for o in opt: 
+            if o[0] == "-n":
+                listUsers(all=allInfo, name=o[1])
+                sys.exit(0)
+
+            if o[0] == "-e":
+                listUsers(all=allInfo, email=o[1])
+                sys.exit(0)
+
+        if not arg:
+            help()
+            sys.exit(1)
+
+        listUsers(all=allInfo, login=arg[0])
+
+
+    else:
+        help()
+
+
+

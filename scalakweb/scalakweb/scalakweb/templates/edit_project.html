@@ -1,0 +1,32 @@
+
+${h.form(h.url(controller='project', action='projectInfoEditSubmit'), method='post')}
+<table>
+    <tbody>
+        <tr>
+            <td>Id:</td>
+            <td>${c.name}</td>
+        </tr>
+        <tr>
+            <td>Administrator:</td>
+            <td>${c.admin}</td>
+        </tr>
+        <tr>
+            <td>Creation date:</td>
+            <td>${c.create_date}</td>
+        </tr>
+        <tr>
+            <td>Due date:</td>
+            <td>${c.due_date}</td>
+        </tr>
+        <tr>
+            <td>Brief description:</td>
+            <td>${h.text('brief', c.brief, size=30, maxlength=50)}</td>
+        </tr>
+        <tr>
+            <td>Full description:</td>
+            <td>${h.textarea('description', c.description, cols=30, rows=10)}</td>
+        </tr>
+    </tbody>
+</table>
+${h.submit('submit', 'Submit')}
+${h.end_form()}
