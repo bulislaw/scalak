@@ -26,8 +26,12 @@ import MySQLdb as db
 
 #XXX
 #XXX There is great need to add some status check in all DB operation
-#XXX especialy inserts
+#XXX especially for inserts
 #XXX
+
+#XXX It would be nice to actually add some level of separation between different
+#    area of responsibility by adding submodules
+#    utils.user, utils.project, utils.other
 
 class ScalakError(Exception):
     def __init__(self, value):
@@ -44,21 +48,9 @@ def openDB():
     dbname = 'scalak'
     return db.connect(host = host, user = user, passwd = passwd, db = dbname)
 
-def htpasswd(password, slt=None):
-    if not slt:
-        def salt():
-            """Returns a string of 2 randome letters"""
-            letters = 'abcdefghijklmnopqrstuvwxyz' \
-                      'ABCDEFGHIJKLMNOPQRSTUVWXYZ' \
-                      '0123456789/.'
-            return random.choice(letters) + random.choice(letters)
-    else:
-        def salt():
-            return slt
-
-    return crypt.crypt(password, salt())
-
 def findUser(id, project = None):
+    """Check if user with given _id_ exists globally or in _project_ if given"""
+
     db = openDB()
     c = db.cursor()
 
@@ -75,6 +67,7 @@ def findUser(id, project = None):
     return True
 
 def userProjects(id):
+    """Returns all project for user with given _id_"""
     db = openDB()
     c = db.cursor()
 
@@ -86,6 +79,7 @@ def userProjects(id):
     return cur.fetchall()
 
 def getAdmin(project):
+    """Returns admin for given _project_"""
     db = openDB()
     c = db.cursor()
 
@@ -106,6 +100,8 @@ def getOwnedProject(user):
     return [proj for proj in userProjects(user) if user == getAdmin(proj)]
 
 def getUserData(id):
+    """Get all public user data (without pass hashs)"""
+
     db = openDB()
     c = db.cursor()
 
@@ -151,12 +147,30 @@ def addUserRequest(user, project):
     db.close()
 
 def getConfig():
+    """Return SafeConfigParser loaded with /etc/scalak.conf"""
+
     config = SafeConfigParser()
     config.read("/etc/scalak.conf")
     return config
 
 def getProjectUrl(project):
+
     return "/p/{0}/trac".format(project)
+
+def htpasswd(password, slt=None):
+    """Generating htpasswd hash; salt for checking passwd"""
+    if not slt:
+        def salt():
+            """Returns a string of 2 randome letters"""
+            letters = 'abcdefghijklmnopqrstuvwxyz' \
+                      'ABCDEFGHIJKLMNOPQRSTUVWXYZ' \
+                      '0123456789/.'
+            return random.choice(letters) + random.choice(letters)
+    else:
+        def salt():
+            return slt
+
+    return crypt.crypt(password, salt())
 
 def valid_password(environ, username, password):
     db = openDB()
@@ -171,4 +185,3 @@ def valid_password(environ, username, password):
     db.close()
 
     return res == htpasswd(password, res[0] + res[1])
-
