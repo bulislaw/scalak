@@ -73,12 +73,7 @@ class ScalakUserController(BaseController):
         c.name = session['user_id']
         c.menu = genMenu(self)
 
-        con = openDB()
-        cur = con.cursor()
-        cur.execute('select login, name, last_name, email from users where \
-                login=%s limit 1', (c.name,))
-        res = cur.fetchone()
-
+        res = getUserData(c.name)
 
         c.lineData = [("Username", res[0]), ("Name", res[1]),
                 ("Last name", res[2]), ("Email", res[3])]
@@ -87,15 +82,15 @@ class ScalakUserController(BaseController):
 
         c.header = ["All my projects"]
 
-        cur.execute('select project from user_project where \
-                user=%s', (c.name,))
+        proj = userProjects(c.name)
+
         c.rows = []
-        for x in cur.fetchall():
+        for x in proj:
             url_old = urlparse(request.url)
             url = url_old.scheme +'://' + url_old.netloc + getProjectUrl(x[0])
             c.rows.append((link_to(x[0], url),))
 
-        c.style = "width:70%; text-align: left"
+        c.style = "width:70%; text-align: left" #XXX: move css to templates
 
         c.content += render("/table.html")
 
@@ -112,13 +107,10 @@ class ScalakUserController(BaseController):
 
         c.header = ["All my projects"]
 
-        con = openDB()
-        cur = con.cursor()
-        cur.execute('select project from user_project where \
-                user=%s', (c.name,))
+        proj = getProjects(c.name)
 
         c.rows = []
-        for x in cur.fetchall():
+        for x in proj:
             url_old = urlparse(request.url)
             url = url_old.scheme +'://' + url_old.netloc + getProjectUrl(x[0])
             c.rows.append((link_to(x[0], url),))
@@ -138,18 +130,15 @@ class ScalakUserController(BaseController):
 
         c.header = ["Projects belong to me"]
 
-        con = openDB()
-        cur = con.cursor()
-        cur.execute('select project from user_project, projects where \
-                user=%s and user=admin and project=id', (c.name,))
+        #XXX get user admin projects
 
         c.rows = []
-        for x in cur.fetchall():
+        for x in getOwnedProject(c.name):
             url_old = urlparse(request.url)
             url = url_old.scheme +'://' + url_old.netloc + getProjectUrl(x[0])
             c.rows.append((link_to(x[0], url),))
 
-        c.style = "width:70%; text-align: left"
+        c.style = "width:70%; text-align: left" #XXX css to templates
 
         c.content = render("/table.html")
 
@@ -170,37 +159,23 @@ class ScalakUserController(BaseController):
         checkLogIn(session)
         c.name = session['user_id']
 
-        con = openDB()
-        cur = con.cursor()
-
-        res = cur.execute('select id from users, user_project, projects where \
-                id=%s and user = %s and project = id limit 1', 
-                (request.params['project_id'], c.name))
+        res = findUser(request.params['project_id'], c.name)
 
         if res:
             h.flash("User is already project member")
             redirect(url(controller="scalak_user", action="join"))
 
-
-        res = cur.execute('select id from projects where id=%s limit 1',
-                (request.params['project_id'],))
-
-        if not res:
+        if not Project.projectExists(request.params['project_id']):
             h.flash("Project doesn't exists")
             redirect(url(controller="scalak_user", action="join"))
 
-
-        res = cur.execute('select * from project_requests where user=%s and \
-                project=%s limit 1', (c.name, request.params['project_id']))
+        res = getUserRequests(c.name, request.params['project_id'])
         if res:
             h.flash("Your request already awaiting acceptance")
             redirect(url(controller="scalak_user", action="join"))
-        
-        cur.execute('insert into project_requests values (%s, %s)',
-                (c.name, request.params['project_id']))
-        con.commit()
-        cur.close()
 
-        h.flash("Your request has been send") 
+        addUserRequest(c.name, request.params['project_id']))
+
+        h.flash("Your request has been send")
         redirect(url(controller="scalak_user", action="userInfo"))
 

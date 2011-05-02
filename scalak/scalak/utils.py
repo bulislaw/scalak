@@ -24,6 +24,11 @@ import sys
 from ConfigParser import SafeConfigParser, Error
 import MySQLdb as db
 
+#XXX
+#XXX There is great need to add some status check in all DB operation
+#XXX especialy inserts
+#XXX
+
 class ScalakError(Exception):
     def __init__(self, value):
         self.value = value
@@ -31,6 +36,7 @@ class ScalakError(Exception):
     def __str__(self):
         return repr(self.value)
 
+#FIXME connection parameters should be keept in file
 def openDB():
     host = 'localhost'
     user = 'scalak'
@@ -68,6 +74,17 @@ def findUser(id, project = None):
         return False
     return True
 
+def userProjects(id):
+    db = openDB()
+    c = db.cursor()
+
+    cur.execute('select project from user_project where \
+            user=%s', (id,))
+
+    db.close()
+
+    return cur.fetchall()
+
 def getAdmin(project):
     db = openDB()
     c = db.cursor()
@@ -82,6 +99,56 @@ def getAdmin(project):
     db.close()
 
     return res
+
+def getOwnedProject(user):
+    """Returns all project where _user_ is admin"""
+
+    return [proj for proj in userProjects(user) if user == getAdmin(proj)]
+
+def getUserData(id):
+    db = openDB()
+    c = db.cursor()
+
+    cur.execute('select login, name, last_name, email, note from users where \
+            login=%s limit 1', (id,))
+
+    db.close()
+
+    return cur.fetchone()
+
+def getUserRequests(user = None, project = None):
+    """Returns 'project join' requests for given data or all requsts"""
+
+    db = openDB()
+    c = db.cursor()
+
+    if project and user:
+        res = cur.execute('select * from project_requests where user=%s and \
+                project=%s limit 1', (user, project))
+    elif not project and not user:
+        res = cur.execute('select * from project_requests where user=%s \
+                limit 1', (id, ))
+    elif project and not user:
+        res = cur.execute('select * from project_requests where \
+                project=%s limit 1', (project, ))
+    elif not project and user:
+        res = cur.execute('select * from project_requests where user=%s and \
+                limit 1', (user, ))
+
+    db.close()
+
+    return res.fetchall()
+
+def addUserRequest(user, project):
+    """Add 'project join' requests"""
+
+    db = openDB()
+    c = db.cursor()
+
+    cur.execute('insert into project_requests values (%s, %s)',
+            (user, project))
+
+    db.close()
 
 def getConfig():
     config = SafeConfigParser()

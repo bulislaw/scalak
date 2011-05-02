@@ -58,7 +58,7 @@ class ProjectController(BaseController):
             return "<h1>Please log in first.</h1>"
 
 	if not authorized(RemoteUser()) or \
-	        request.environ.get("REMOTE_USER") != getAdmin(id):
+                request.environ.get("REMOTE_USER") != getAdmin(id):
             response.status = "401 Not authenticated"
             return "Only project administrator may view this page. " \
                     "Please try again."

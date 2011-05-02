@@ -26,22 +26,21 @@ import shutil
 import MySQLdb as db
 import stat
 from time import sleep
-from trac.env import Environment as Env
-from trac.db.api import with_transaction
 import sys
+
 from pkg_resources import resource_string
 
+from trac.env import Environment as Env
+from trac.db.api import with_transaction
 from trac.perm import PermissionSystem
 
 from scalak.utils import *
-
-import sys
 
 __services__ = {}
 
 def registerService(type, subtype, cls):
     """Each services should be registered so Scalak may used it
-    
+
     Args:
         type - service type name (string) eg. "repository"
         subtype - service type name (string) eg. "svn"
@@ -63,7 +62,7 @@ def getClass(type, subtype):
 
 class Project(object):
     """Main class for all Scalak activity
-    
+
     Its main responsibility is to build complete Project environment:
         * Directory structure (at config given path)
         * Add project to database
@@ -76,7 +75,7 @@ class Project(object):
     def __init__(self, config=None, id=None, admin=None, create_date=None,
                 due_date=None, brief=None, description=None, active = True):
         """Initiates project without actually doing anything
-        
+
         Parameters:
             db - database connection (MySQLdb object)
             config - ConfigParser.SafeConfigParser
@@ -96,7 +95,7 @@ class Project(object):
         self._dir = '/var/scalak/projects/'
         self._path = None
 
-        self.admin = admin 
+        self.admin = admin
         self.create_date = date.today()
         self.due_date = due_date
         self._brief = brief
@@ -108,7 +107,7 @@ class Project(object):
     def brief(self):
         return self._brief
 
-    @brief.setter 
+    @brief.setter
     def brief(self, text):
         if len(text) > 50:
             raise ScalakError("Brief description must be up to 50 characters")
@@ -123,7 +122,7 @@ class Project(object):
     def description(self):
         return self._description
 
-    @description.setter 
+    @description.setter
     def description(self, text):
         con = openDB()
         c = con.cursor()
@@ -132,24 +131,26 @@ class Project(object):
         con.commit()
         c.close()
 
-    def checkId(self):
+    @classmethod
+    def projectExists(cls, id):
         """Checks if project with given id exists, raising error when do"""
+
         con = openDB()
         c = con.cursor()
-        res = c.execute('select * from projects where id=%s limit 1', 
-                (self._id,))
-        if res:
-            raise ScalakError('Project with given id already exists.')
-
-        con.commit()
+        res = c.execute('select * from projects where id=%s limit 1',
+                (id,))
         c.close()
+
+        if res:
+            return True
+        return False
 
     def checkAdmin(self):
         """Checks if user given as admin exists, raising error when not"""
 
         con = openDB()
         c = con.cursor()
-        res = c.execute('select * from users where login=%s limit 1', 
+        res = c.execute('select * from users where login=%s limit 1',
                 (self.admin,))
         if not res:
             raise ScalakError("User given as admin don't exist in db")
@@ -171,7 +172,9 @@ class Project(object):
         """Creates project environment (as explained in Project.__doc__)"""
 
         self.checkAdmin()
-        self.checkId()
+
+        if Project.projectExists(self.id):
+            raise ScalakError('Project with given id already exists.')
 
         if self._config.has_section('general') and \
                 self._config.has_option('general', 'projects_dir'):
@@ -188,10 +191,10 @@ class Project(object):
         con = openDB()
         c = con.cursor()
         c.execute('insert into projects values \
-                (%s, %s, %s, %s, %s, %s, %s)', 
+                (%s, %s, %s, %s, %s, %s, %s)',
                 (self._id, self.admin, self.create_date, self.due_date,
                 self.brief, self.description, self.active))
-        c.executemany('insert into tags values (%s, %s)', 
+        c.executemany('insert into tags values (%s, %s)',
                 [(self.id, t) for t in self.tags])
 
         con.commit()
@@ -252,7 +255,7 @@ class Project(object):
 
         db = openDB()
         c = db.cursor()
-        c.execute("delete from user_project where user=%s and project=%s", 
+        c.execute("delete from user_project where user=%s and project=%s",
                 (id, self.id))
         db.commit()
         c.close()
@@ -279,7 +282,7 @@ class Project(object):
 
         con = openDB()
         c = con.cursor()
-        res = c.execute('select * from projects where id=%s limit 1', 
+        res = c.execute('select * from projects where id=%s limit 1',
                 (id,))
         if not res:
             raise ScalakError("No such project")
@@ -297,7 +300,7 @@ class Project(object):
         self._config = config
 
         # Loading project tags
-        res = c.execute('select tag from tags where project=%s', 
+        res = c.execute('select tag from tags where project=%s',
                 (id,))
         if res:
             self.tags = c.fetchall()
@@ -347,7 +350,7 @@ class Project(object):
         srv = srv()
 
         res = db.execute('select field, value from services where project=%s and\
-                type=%s and subtype=%s and name=%s', 
+                type=%s and subtype=%s and name=%s',
                 (self.id, type, subtype, name))
         tmp = []
         if res:
@@ -358,9 +361,9 @@ class Project(object):
 
     def _initApache(self):
         """Copying project specific Apache configuration to .../projects/
-        
-        For now its only contains inclusion of services configs, www, 
-        and general redirection so every non "service" html query would 
+
+        For now its only contains inclusion of services configs, www,
+        and general redirection so every non "service" html query would
         end up on www.
         """
 
@@ -373,7 +376,7 @@ class Project(object):
                     PROJECT_PATH = self._path)
             config = Template(tmp).safe_substitute(opt)
 
-        with open(os.path.join(self._dir, 
+        with open(os.path.join(self._dir,
                 "{0}.conf".format(self.id)), "w") as confFile:
             confFile.write(config)
 
@@ -381,13 +384,14 @@ class Project(object):
 
     def getService(self, type = None, subtype = None, name = None):
         """Return service with given type, subtype and name (all strings).
-        
+
         If any field is None then this field is ignored, but You can ignore
         only fields on the right of the one already supplied.
         so. type = "repository", subtype = None, name = None -> OK
             type = None, subtype = None, name = "foospam" -> WRONG
         """
-        res = [] 
+
+        res = []
         for srv in self._services:
             if (type is None or srv.type == type) and \
                     (subtype is None or srv.subtype == subtype) and \
@@ -399,12 +403,12 @@ class Project(object):
 
 
     def addService(self, srv, load=False):
-        """Adds new service to project 
+        """Adds new service to project
 
         srv - service to add subclass of Service
         load - load must be true if You are loading service from db,
                     false when adding new service
-                    
+
         Each service path (type:subtype:name) must be unique, services may add
         some further restrictions.
         """
@@ -422,12 +426,12 @@ class Project(object):
 
 
     def delService(self, srv):
-        """Deletes given service (some service may not be deleted) 
-        
+        """Deletes given service (some service may not be deleted)
+
         srv - service to delete subclass of Service
 
         Its only delete like in "i don't want this repository any more", so
-        You can't delete eg. Trac. 
+        You can't delete eg. Trac.
         """
 
         srv.remove()
@@ -438,7 +442,7 @@ class Project(object):
         con = openDB()
         c = con.cursor()
         c.execute("delete from services where project=%s and type=%s \
-                and subtype=%s and name=%s", (self.id, srv.type, 
+                and subtype=%s and name=%s", (self.id, srv.type,
                     srv.subtype, srv.name))
         con.commit()
         c.close()
@@ -446,14 +450,14 @@ class Project(object):
     @property
     def id(self):
         """Return project id
-        
+
         Id must be unique and its not changeable in current Scalak version.
         """
         return self._id
 
     def remove(self, quiet=False):
         """Removes project with all settings and services
-        
+
             quiet = True won't wait for 5 sec before procede
         """
 
@@ -474,7 +478,7 @@ class Project(object):
 
         shutil.rmtree(self._path)
         os.remove(os.path.join(self._dir, "{0}.conf".format(self.id)))
-        
+
         con = openDB()
         c = con.cursor()
         c.execute("delete from services where project=%s", (self.id,))
@@ -486,8 +490,8 @@ class Project(object):
 
 
 class Service(object):
-    """Base class for all other project's services 
-    
+    """Base class for all other project's services
+
     Services are divided by type (like 'trac', 'repository') and subtype
     (like 'svn', 'git'), furthermore each service may have name.
 
@@ -512,7 +516,7 @@ class Service(object):
             project - Project instance (service would be added to it)
             config - ConfigParser.SafeconfigParser
 
-        Deploy should do all service side steps, after adding service to 
+        Deploy should do all service side steps, after adding service to
         project, needed to build working service.
 
         Its only base function, subclasses should overload it and call for
@@ -535,7 +539,7 @@ class Service(object):
         con = openDB()
         c = con.cursor()
         c.executemany("insert into services values \
-                (%s, %s, %s, %s, %s, %s)", 
+                (%s, %s, %s, %s, %s, %s)",
                 [(self._project.id, self.type, self.subtype, self.name,
                     tup[0], tup[1]) for tup in values])
         con.commit()
@@ -544,15 +548,15 @@ class Service(object):
 
     def _serialize(self):
         """Each subclass should return its own argument
-        
+
         Return:
             list of tuples (key, value)
 
-        Returned tuples will be saved to db and then service would be 
+        Returned tuples will be saved to db and then service would be
         created and suplied with that values
         """
         return [('none', 'none')]
-    
+
 
     def remove(self):
         pass
@@ -578,8 +582,8 @@ class Service(object):
             stdout.close()
         return ret;
 
-    
-    def addUser(self, login, name = None, last_name = None, email = None, 
+
+    def addUser(self, login, name = None, last_name = None, email = None,
             passwd = None, sha_passwd = None, note = None):
         pass
 
@@ -639,7 +643,7 @@ class Trac(Service):
 
     def _serialize(self):
         """Returns valuese needed to be serialized to data base
-        
+
         Return:
             list of tuples (key, value)
 
@@ -653,7 +657,7 @@ class Trac(Service):
 
     def deploy(self, project, config):
         """Creates and connect Trac instance with Scalak and Apache
-        
+
         Only one instance per project!
 
         Parameters:
@@ -673,7 +677,7 @@ class Trac(Service):
                 self._pluginsDir = config.get('trac', 'plugins_dir')
             if config.has_option('trac', 'trac_admin_dir'):
                 self._tracAdminDir = config.get('trac', 'trac_admin_dir')
-            
+
         self._checkSingleton()
 
         self._tracPath = os.path.join(self._dir, self._project.id, "trac/")
@@ -683,7 +687,7 @@ class Trac(Service):
                 "initenv", project.id, self._dbSpec]):
             raise ScalakError("Error when trying to init new " 
                     "Trac instance.")
-        
+
         self._options['PROJECT_ADMIN'] = self._project.admin
         self._options['PROJECT_DESCRIPTION'] = self._project.description
         self._options['PROJECT_ID'] = self._project.id
@@ -697,12 +701,12 @@ class Trac(Service):
         # Adding admin for Trac
         if self._runCommand([self._tracPath,
                 "permission add", project.admin, 'TRAC_ADMIN']):
-            raise ScalakError("Error when trying to init new " 
+            raise ScalakError("Error when trying to init new "
                     "Trac instance.")
 
         # Upgrading project - some plugins needs it
         if self._runCommand([self._tracPath, "upgrade"]):
-            raise ScalakError("Error when trying to upgrade " 
+            raise ScalakError("Error when trying to upgrade "
                     "Trac instance.")
 
         # Create authz file for future repo (empty for now)
@@ -733,7 +737,6 @@ class Trac(Service):
         self._options['PLUGINS_DIR'] = self._pluginsDir
 
 
-
     def _configure(self, tracDir):
         """Takes template for trac.ini and save it, filled up, into project dir
 
@@ -753,18 +756,18 @@ class Trac(Service):
 
     def _checkSingleton(self):
         """Checks if there is already Trac instance in project
-        
+
         There is only one Trac instance per project allowed
         """
-        if len(self._project.getService(self.type)): 
+        if len(self._project.getService(self.type)):
             raise ScalakError("Trac service already exists, only one Trac" \
                     " nstance per project allowed.")
-                    
-    
-    def _configureApache(self, projectDir):
-        """Takes template for Apache config and save it filled up 
 
-            Templates would add Trac instance to Apache so it could be 
+
+    def _configureApache(self, projectDir):
+        """Takes template for Apache config and save it filled up
+
+            Templates would add Trac instance to Apache so it could be
             accesed from net.
 
             projectDir - path to project
@@ -781,10 +784,9 @@ class Trac(Service):
             confFile.write(config)
 
 
-
     def addRepository(self, name, path, type):
         """Connects repository to trac
-        
+
         Parameters:
             name - repository naem
             path - path to the repository
@@ -828,7 +830,7 @@ class Trac(Service):
 
     def delRepository(self, name):
         """Disconnects repository from trac
-        
+
         Parameters:
             name - repository naem
             path - path to the repository
@@ -897,7 +899,7 @@ class Repository(Service):
         else:
             raise ScalakError("There is no Trac instance for given project."
                     " Contact Scalak administrator.")
-                    
+
     def _disconnectTrac(self):
         """Connects repository to Trac"""
 
@@ -933,7 +935,7 @@ class Subversion(Repository):
 
     def deploy(self, project, config):
         """Creates subversion repository and connect it to project
-        
+
         Parameters:
             project - Project instance (service would be added to it)
             config - ConfigParser.SafeconfigParser
@@ -965,7 +967,7 @@ class Subversion(Repository):
 
     def _serialize(self):
         """Returns valuese needed to be serialized to data base
-        
+
         Return:
             list of tuples (key, value)
 
@@ -1089,7 +1091,7 @@ class Mercurial(Repository):
 
     def _serialize(self):
         """Returns valuese needed to be serialized to data base
-        
+
         Return:
             list of tuples (key, value)
 
@@ -1204,7 +1206,7 @@ $LIST_NAME-unsubscribe:  "|/var/lib/mailman/mail/mailman unsubscribe mailman"
 
     def _serialize(self):
         """Returns valuese needed to be serialized to data base
-        
+
         Return:
             list of tuples (key, value)
         """
@@ -1235,7 +1237,7 @@ $LIST_NAME-unsubscribe:  "|/var/lib/mailman/mail/mailman unsubscribe mailman"
 
         This part is kind of tricky becouse mailman provide minimal cli 
         interface, that is definitly not sufficient.
-        
+
 
         Parameters:
             project - Project instance (service would be added to it)
@@ -1265,7 +1267,7 @@ $LIST_NAME-unsubscribe:  "|/var/lib/mailman/mail/mailman unsubscribe mailman"
             if config.has_option('mailman', 'mailman_dir'):
                 self._mailman_dir = config.get('mailman', 'mailman_dir')
 
-            
+
             # Path to mta aliases file
             if config.has_option('mailman', 'aliases_file'):
                 self._aliases_file = config.get('mailman', 'aliases_file')
@@ -1321,7 +1323,7 @@ $LIST_NAME-unsubscribe:  "|/var/lib/mailman/mail/mailman unsubscribe mailman"
         web_page_url = mm_cfg.DEFAULT_URL_PATTERN % urlhost
 
         mlist = MailList.MailList()
-        
+
         # Part of code from Mailman:bin/newlist
         oldmask = os.umask(002)
         lang = mm_cfg.DEFAULT_SERVER_LANGUAGE
@@ -1356,7 +1358,7 @@ $LIST_NAME-unsubscribe:  "|/var/lib/mailman/mail/mailman unsubscribe mailman"
             mlist.Save()
         finally:
             mlist.Unlock()
-    
+
         # Now do the MTA-specific list creation tasks
         if mm_cfg.MTA:
             modname = 'Mailman.MTA.' + mm_cfg.MTA
@@ -1392,7 +1394,7 @@ $LIST_NAME-unsubscribe:  "|/var/lib/mailman/mail/mailman unsubscribe mailman"
 
     def remove(self):
         """Deletes mailing list
-        
+
         First delete list reference from mailman, then delete aliases from MTA
         """
 
@@ -1487,7 +1489,7 @@ $LIST_NAME-unsubscribe:  "|/var/lib/mailman/mail/mailman unsubscribe mailman"
             mlist.Unlock()
 
     def removeUser(self, id):
-        
+
         con = openDB()
         c = con.cursor()
         res = c.execute('select email from users where login=%s limit 1', 
@@ -1532,7 +1534,6 @@ $LIST_NAME-unsubscribe:  "|/var/lib/mailman/mail/mailman unsubscribe mailman"
 
 
 registerService(Mailman._type, Mailman._subtype, Mailman)
- 
 
 #TESTS
 class dummy_config():
@@ -1558,7 +1559,7 @@ def testProject():
 
 def testTrac(proj):
     proj.addService(Trac())
-    
+
 def testSvn(proj, name = None):
     if name is not None:
         proj.addService(Subversion(name))
@@ -1571,7 +1572,7 @@ def testHg(proj, name = None):
         proj.addService(Mercurial(name))
     else:
         proj.addService(Mercurial())
-    
+
 def testMailman(proj, name = None):
     if name is not None:
         proj.addService(Mailman(name))
