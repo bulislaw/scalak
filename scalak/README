@@ -1,2 +1,0 @@
-Please copy conf/scalak.conf to Your apache config dir and make sure its include into apache configuration.
-You may also want to edit scalak path there.

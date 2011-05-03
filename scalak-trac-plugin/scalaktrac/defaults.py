@@ -28,7 +28,7 @@ class DbDefaults(Component):
     db_host = "localhost"
     db_name = "scalak"
     db_user = "scalak"
-    db_pass = "scalak"
+    db_pass = "kalacs"
 
     #SQL - dbAuth
     sql_get_users = "select user from user_project where project=%s"

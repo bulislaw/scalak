@@ -1,3 +1,8 @@
+create database scalak;
+use scalak;
+CREATE USER 'scalak'@'localhost' IDENTIFIED BY 'kalacs';
+GRANT SELECT, INSERT, UPDATE, DELETE ON scalak.* TO 'scalak'@'localhost';
+
 create table users (
     login varchar(30) primary key,
     name text,
@@ -44,4 +49,6 @@ create table services (
     value text,
     foreign key (project) references projects(id),
     primary key (project, type, subtype, name, field));
+
+
 

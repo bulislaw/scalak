@@ -44,7 +44,7 @@ class ScalakError(Exception):
 def openDB():
     host = 'localhost'
     user = 'scalak'
-    passwd = 'scalak'
+    passwd = 'kalacs'
     dbname = 'scalak'
     return db.connect(host = host, user = user, passwd = passwd, db = dbname)
 
