@@ -26,8 +26,6 @@ def genMenu(page):
 
         m = h.MenuItem("User informations", url(controller="scalak_user", \
                 action="userInfo"))
-        m.addSubitem("Edit", url(controller="scalak_user", \
-                action="userInfoEdit"))
         menu.append(m)
 
         m = h.MenuItem("Projects", url(controller="scalak_user", \
@@ -94,8 +92,6 @@ class ScalakUserController(BaseController):
 
         c.content += render("/table.html")
 
-        con.close()
-
         return render("/temp.html")
 
     def projects(self):
@@ -107,7 +103,7 @@ class ScalakUserController(BaseController):
 
         c.header = ["All my projects"]
 
-        proj = getProjects(c.name)
+        proj = userProjects(c.name)
 
         c.rows = []
         for x in proj:
@@ -174,7 +170,7 @@ class ScalakUserController(BaseController):
             h.flash("Your request already awaiting acceptance")
             redirect(url(controller="scalak_user", action="join"))
 
-        addUserRequest(c.name, request.params['project_id']))
+        addUserRequest(c.name, request.params['project_id'])
 
         h.flash("Your request has been send")
         redirect(url(controller="scalak_user", action="userInfo"))

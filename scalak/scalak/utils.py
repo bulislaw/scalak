@@ -71,19 +71,19 @@ def userProjects(id):
     db = openDB()
     c = db.cursor()
 
-    cur.execute('select project from user_project where \
+    c.execute('select project from user_project where \
             user=%s', (id,))
 
     db.close()
 
-    return cur.fetchall()
+    return c.fetchall()
 
 def getAdmin(project):
     """Returns admin for given _project_"""
     db = openDB()
     c = db.cursor()
 
-    res = c.execute("select admin from projects where id=%s limit 1", (project,))
+    res = c.execute('select admin from projects where id=%s limit 1', (project,))
 
     if not res:
         return False
@@ -97,7 +97,7 @@ def getAdmin(project):
 def getOwnedProject(user):
     """Returns all project where _user_ is admin"""
 
-    return [proj for proj in userProjects(user) if user == getAdmin(proj)]
+    return [proj for proj in userProjects(user) if user == getAdmin(proj[0])]
 
 def getUserData(id):
     """Get all public user data (without pass hashs)"""
@@ -105,18 +105,18 @@ def getUserData(id):
     db = openDB()
     c = db.cursor()
 
-    cur.execute('select login, name, last_name, email, note from users where \
+    c.execute('select login, name, last_name, email, note from users where \
             login=%s limit 1', (id,))
 
     db.close()
 
-    return cur.fetchone()
+    return c.fetchone()
 
 def getUserRequests(user = None, project = None):
     """Returns 'project join' requests for given data or all requsts"""
 
     db = openDB()
-    c = db.cursor()
+    cur = db.cursor()
 
     if project and user:
         res = cur.execute('select * from project_requests where user=%s and \
@@ -133,7 +133,7 @@ def getUserRequests(user = None, project = None):
 
     db.close()
 
-    return res.fetchall()
+    return cur.fetchall()
 
 def addUserRequest(user, project):
     """Add 'project join' requests"""
@@ -141,7 +141,7 @@ def addUserRequest(user, project):
     db = openDB()
     c = db.cursor()
 
-    cur.execute('insert into project_requests values (%s, %s)',
+    c.execute('insert into project_requests values (%s, %s)',
             (user, project))
 
     db.close()
