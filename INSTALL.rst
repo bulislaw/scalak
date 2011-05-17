@@ -16,6 +16,7 @@ INSTALL
     - libapache2-svn
     - Mercurial
     - Pylons
+    - Authkit
 
 
 Configuration
@@ -33,5 +34,7 @@ Configuration
         automatic way to change db user data, if You want to change default ones
         -- and its strongly recommended -- You have to change user data in 
         /etc/apache2/mods-enabled/dbd.conf and in python code)* #XXX
+
+3) # ./bootstrap.sh
 
     

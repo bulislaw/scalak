@@ -26,4 +26,11 @@ popd
 
 cp -r scalakweb/scalakweb /var/scalak
 
+pushd /var/scalak/scalakweb
+easy_install ScalakWeb
+paster setup-app production.ini
+popd
+
 chown -R $wwwusr:$wwwgrp /var/scalak/* 
+
+/etc/init.d/apache2 restart
