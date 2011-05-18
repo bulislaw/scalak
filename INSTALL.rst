@@ -37,4 +37,3 @@ Configuration
 
 3) # ./bootstrap.sh
 
-    

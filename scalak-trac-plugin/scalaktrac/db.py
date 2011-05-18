@@ -2,6 +2,7 @@
 
 from trac.core import *
 from trac.config import ExtensionOption, Option
+from scalak import utils
 
 from defaults import DbDefaults
 
@@ -42,17 +43,6 @@ class ScalakDB(Component):
 	    self.error = True
 	    self._die()
 
-	#data base connection options
-
-	self.db_name = self.env.config.get("account-manager", "db_name", 
-		DbDefaults.db_name)
-	self.db_host = self.env.config.get("account-manager", "db_host", 
-		DbDefaults.db_host)
-	self.db_user = self.env.config.get("account-manager", "db_user", 
-		DbDefaults.db_user)
-	self.db_pass = self.env.config.get("account-manager", "db_pass", 
-		DbDefaults.db_pass)
-
 	#sql queries - maybe someday, someone would change queries 
 	#   this is very simple and straightforward way
 
@@ -80,10 +70,7 @@ class ScalakDB(Component):
 	    self._die()
 	    return -1
 
-	self.__con = db.connect(host = self.db_host,
-				user = self.db_user,
-				passwd = self.db_pass,
-				db = self.db_name)
+	self.__con = utils.openDB()
 	self.__c = self.__con.cursor()
 
 	return self.__c

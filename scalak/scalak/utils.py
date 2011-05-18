@@ -40,12 +40,15 @@ class ScalakError(Exception):
     def __str__(self):
         return repr(self.value)
 
-#FIXME connection parameters should be keept in file
 def openDB():
-    host = 'localhost'
-    user = 'scalak'
-    passwd = 'kalacs'
-    dbname = 'scalak'
+
+    conf = SafeConfigParser(allow_no_value=True)
+    conf.read("/etc/scalak.conf")
+    host = conf.get('db', 'host') or 'localhost'
+    user = conf.get('db', 'user') or 'scalak'
+    passwd = conf.get('db', 'passwd') or 'kalacs'
+    dbname = conf.get('db', 'dbname') or 'scalak'
+
     return db.connect(host = host, user = user, passwd = passwd, db = dbname)
 
 def findUser(id, project = None):
