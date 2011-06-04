@@ -18,12 +18,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import getopt
-import time
 import datetime
 
 import scalak.commands.common as common
-from scalak.project import *
+from scalak import Project
 from scalak.utils import *
+from scalak.services import Trac
 
 class ProjectCmd(common.Command):
     _command = "create", "remove"

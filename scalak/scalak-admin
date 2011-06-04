@@ -25,12 +25,10 @@ __imports__ = []
 
 import sys
 import os
-from ConfigParser import SafeConfigParser, Error
 from subprocess import call
 import getopt
 
 from scalak.utils import *
-from scalak.project import *
 from scalak.commands import *
 
 olduid = None
