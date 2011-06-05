@@ -17,16 +17,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 __version__ = 0.2
 __author__ = 'Bartosz Szatkowski <bulislaw@linux.com>'
 __license__ = 'GPL 3.0+'
 
 import sys
 from datetime import date
+import getopt
 
 from scalak.utils import *
-import getopt
 
 
 def help():
@@ -44,18 +43,32 @@ def help():
             "\t\t login - show info about user with given login \n" \
             "\t\t -n name - show info about users with given last name \n" \
             "\t\t -e email - show info about user with given email \n" \
-            "\t\t -a - shows all user data (with hashed passwords)\n\n" 
+            "\t\t -a - shows all user data (with hashed passwords)\n\n"
 
-
+# TODO it would be nice to rewrite it, in some nicer way
 def listProjects(id=None, admin=None, due=None, all=None):
+    """Display projects with given criteria
+
+    It's kind of misleading and tricky need to be changed (yeah right) in future
+
+    * no options given - print basic informations (ID, admin, brief info)
+    * due given - display only projects that are after deadline
+    * admin given - list projects that belongs to *admin*
+    * id given - list only project with *id*
+    * all given (True) - lists all project info (with services and users)
+    """
+
     con = openDB()
     c = con.cursor()
 
     if admin or id or all:
+
         if admin:
             res = c.execute("select * from projects where admin=%s", (admin,))
+
         elif id:
             res = c.execute("select * from projects where id=%s", (id,))
+
         else:
             res = c.execute("select * from projects")
 
@@ -78,8 +91,9 @@ def listProjects(id=None, admin=None, due=None, all=None):
 
                 if not srv:
                     print "\tNo services registered"
+
                 else:
-                    print "{0:<15} {1:<15} {2}".format("Type", "Subtype", 
+                    print "{0:<15} {1:<15} {2}".format("Type", "Subtype",
                             "Name")
 
                     for srv in c.fetchall():
@@ -93,56 +107,69 @@ def listProjects(id=None, admin=None, due=None, all=None):
                 if usr:
                     print "Members: {0}\n".format(", ".join( \
                             [x[0] for x in c.fetchall()]))
+
                 else:
                     print "No members\n"
 
         sys.exit(0)
 
-
     res = c.execute("select id, admin, brief, due_date from projects")
     print "{0:<25}{1:<25}{2}\n".format("Id", "Administrator", "Brief")
+
     for prj in c.fetchall():
         if due and (not prj[3] or prj[3] > date.today()):
             continue
+
         print "{0:<25} {1:<25} {2}".format(*prj[:-1])
     c.close()
 
-
 def listUsers(login=None, name=None, email=None, all=None):
+    """Print users info"""
+
     con = openDB()
     c = con.cursor()
 
     if login or email or name:
         if login:
             res = c.execute("select * from users where login=%s", (login,))
+
         if email:
             res = c.execute("select * from users where email=%s", (email,))
+
         if name:
             res = c.execute("select * from users where last_name=%s", (name,))
+
         if not res:
             print "No such user"
             sys.exit(1)
+
         res = c.fetchall()
         for row in res:
             if not all:
                 print "Login: {0}\nName: {1} {2}\nEmail: {3}\nNote: {4}\n" \
                         .format(row[0], row[1], row[2], row[3], row[6])
+
             else:
                 print "Login: {0}\nName: {1} {2}\nEmail: {3}\nNote: {4}\n" \
                         .format(row[0], row[1], row[2], row[3], row[6])
+
                 proj = c.execute("select project from user_project where \
                         user=%s", (row[0],))
                 if proj:
                     print "Projects: {0}\n".format(", ".join( \
                             [x[0] for x in c.fetchall()]))
+
                 else:
                     print "No projects\n"
+
     else:
         res = c.execute("select login, name, last_name from users")
 
         print "{0:<25}{1:<25}{2}\n".format("Login", "Name", "Last name")
+
         for prj in c.fetchall():
             print "{0:<25} {1:<25} {2}".format(*prj)
+
         c.close()
 
 if __name__ == "__main__":
@@ -159,12 +186,12 @@ if __name__ == "__main__":
         allInfo = False
         if ("-a", "") in opt:
             allInfo = True
+
         overDue = False
         if ("-D", "") in opt:
             overDue = True
 
-
-        for o in opt: 
+        for o in opt:
             if o[0] == "-A":
                 listProjects(all=allInfo, due=overDue, admin=o[1])
                 sys.exit(0)
@@ -187,7 +214,7 @@ if __name__ == "__main__":
         if ("-a", "") in opt:
             allInfo = True
 
-        for o in opt: 
+        for o in opt:
             if o[0] == "-n":
                 listUsers(all=allInfo, name=o[1])
                 sys.exit(0)
@@ -202,9 +229,5 @@ if __name__ == "__main__":
 
         listUsers(all=allInfo, login=arg[0])
 
-
     else:
         help()
-
-
-

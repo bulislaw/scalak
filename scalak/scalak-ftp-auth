@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#
+
 # Scalak
 # Copyright 2010 Bartosz Szatkowski <bulislaw@linux.com>
 #
@@ -18,35 +18,37 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Scalak ftp auth is authorization module for prueFTP ftp server, its 
-intended to be used with Scalak and Scalak data base schema
+Scalak ftp auth is authorization module for prueFTP ftp server, it is
+intended to be used with Scalak and Scalak data base schema.
+
 Usage:
     pure-authd -s /var/run/ftpd.sock -r /usr/bin/ftp-auth-handler &
     pure-ftpd  -lextauth:/var/run/ftpd.sock &
 """
 
 from os import getenv, path
-from ConfigParser import SafeConfigParser, Error
 import sys
 
 from scalak.utils import *
 
 if __name__ == "__main__":
-    config = SafeConfigParser()
-    config.read("/etc/scalak.conf")
+
+    config = getConfig()
+
     try:
         uid = config.get("ftp", "uid")
     except Error:
         uid = 33
+
     try:
         uid = config.get("ftp", "gid")
     except Error:
         gid = 33
+
     try:
         dir = config.get("general", "projects_dir")
     except Error:
         dir = "/var/scalak/projects"
-
 
     user = getenv("AUTHD_ACCOUNT")
     passwd = getenv("AUTHD_PASSWORD")
@@ -56,21 +58,7 @@ if __name__ == "__main__":
         print "end"
         sys.exit(1)
 
-    con = openDB()
-    c = con.cursor()
-
-    res = c.execute("select password, id from projects, users where id=%s \
-            and admin=login and active=1 limit 1", user)
-
-    if not res:
-        print "auth_ok:0"
-        print "end"
-        sys.exit(1)
-
-    res = c.fetchone()
-    
-    if htpasswd(passwd, res[0][0] + res[0][1]) != res[0]:
-        print htpasswd(passwd, res[0][0] + res[0][1]) ,res[0]
+    if not valid_password(user, passwd):
         print "auth_ok:-1"
         print "end"
         sys.exit(1)

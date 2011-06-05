@@ -34,6 +34,8 @@ import MySQLdb as db
 #    utils.user, utils.project, utils.other
 
 class ScalakError(Exception):
+    """Main (and for now only one) exception for logic errors in Scalak"""
+
     def __init__(self, value):
         self.value = value
 
@@ -41,9 +43,14 @@ class ScalakError(Exception):
         return repr(self.value)
 
 def openDB():
+    """Return connection to default Scalak db
+
+    You still need to create cursor and commit/close db
+    """
 
     conf = SafeConfigParser(allow_no_value=True)
     conf.read("/etc/scalak.conf")
+
     host = conf.get('db', 'host') or 'localhost'
     user = conf.get('db', 'user') or 'scalak'
     passwd = conf.get('db', 'passwd') or 'kalacs'
@@ -59,6 +66,7 @@ def findUser(id, project = None):
 
     if not project:
         res = c.execute("select login from users where login=%s limit 1", (id,))
+
     else:
         res = c.execute("select login from users, user_project where login=%s \
                 and login=user and project=%s limit 1", (id, project))
@@ -67,10 +75,12 @@ def findUser(id, project = None):
 
     if not res:
         return False
+
     return True
 
 def userProjects(id):
     """Returns all project for user with given _id_"""
+
     db = openDB()
     c = db.cursor()
 
@@ -83,6 +93,7 @@ def userProjects(id):
 
 def getAdmin(project):
     """Returns admin for given _project_"""
+
     db = openDB()
     c = db.cursor()
 
@@ -116,7 +127,7 @@ def getUserData(id):
     return c.fetchone()
 
 def getUserRequests(user = None, project = None):
-    """Returns 'project join' requests for given data or all requsts"""
+    """Returns 'project join' requests for given data or all requests"""
 
     db = openDB()
     cur = db.cursor()
@@ -124,12 +135,15 @@ def getUserRequests(user = None, project = None):
     if project and user:
         res = cur.execute('select * from project_requests where user=%s and \
                 project=%s limit 1', (user, project))
+
     elif not project and not user:
         res = cur.execute('select * from project_requests where user=%s \
                 limit 1', (id, ))
+
     elif project and not user:
         res = cur.execute('select * from project_requests where \
                 project=%s limit 1', (project, ))
+
     elif not project and user:
         res = cur.execute('select * from project_requests where user=%s and \
                 limit 1', (user, ))
@@ -154,14 +168,17 @@ def getConfig():
 
     config = SafeConfigParser()
     config.read("/etc/scalak.conf")
+
     return config
 
+# FIXME it should be more generic 
 def getProjectUrl(project):
 
     return "/p/{0}/trac".format(project)
 
 def htpasswd(password, slt=None):
     """Generating htpasswd hash; salt for checking passwd"""
+
     if not slt:
         def salt():
             """Returns a string of 2 randome letters"""
@@ -169,13 +186,15 @@ def htpasswd(password, slt=None):
                       'ABCDEFGHIJKLMNOPQRSTUVWXYZ' \
                       '0123456789/.'
             return random.choice(letters) + random.choice(letters)
+
     else:
         def salt():
             return slt
 
     return crypt.crypt(password, salt())
 
-def valid_password(environ, username, password):
+def valid_password(username, password):
+
     db = openDB()
     c = db.cursor()
 
@@ -188,3 +207,44 @@ def valid_password(environ, username, password):
     db.close()
 
     return res == htpasswd(password, res[0] + res[1])
+
+def newUser(login, email, passwd, name = "", lastName="", note = ""):
+    """Add user to database
+
+    login, email, passwd are mandatory (passwd in plain text)
+    """
+
+    if findUser(login):
+        raise ScalakError("User already exists")
+
+    sha1pass = sha1()
+    sha1pass.update(passwd)
+    sha1pass = sha1pass.hexdigest()
+
+    htpass = htpasswd(passwd)
+
+    con = openDB()
+    c = con.cursor()
+
+    c.execute('insert into users values(%s, %s, %s, %s, %s,%s, %s)',
+        (login, name, lastName, email, htpass, sha1pass, note))
+
+    con.commit()
+    c.close()
+
+def removeUser(login):
+    """Removes user from Scalak - user must not be admin of any project"""
+
+    con = openDB()
+    c = con.cursor()
+
+    if getOwnedProject(login):
+        raise ScalakError("Can't remove user {0}, user is admin of " \
+                "some projects: {1}"
+                .format(login, ', '.join([p[0] for p in proj])))
+
+    c.execute('delete from user_project where user=%s', (login,))
+    c.execute('delete from users where login=%s', (login,))
+
+    con.commit()
+    c.close()

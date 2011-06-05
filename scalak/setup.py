@@ -11,7 +11,7 @@ setup(
     author = "Bartosz Szatkowski",
     author_email = "bulislaw@linux.com",
     license = "GPL 3+",
-    packages=["scalak", "scalak/commands"],
+    packages=["scalak", "scalak/commands", "scalak/services"],
     package_data={"scalak" : ["templates/*.conf", "templates/svn/*",
             "templates/hg/*", "templates/trac/*"]},
     scripts=["scalak-admin", "scalak-users", "scalak-info"],

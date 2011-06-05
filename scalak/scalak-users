@@ -17,7 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 __version__ = 0.2
 __author__ = 'Bartosz Szatkowski <bulislaw@linux.com>'
 __license__ = 'GPL 3.0+'
@@ -28,8 +27,7 @@ import sys
 import random
 from hashlib import sha1
 
-from scalak.utils import *
-
+from scalak import utils
 
 def addUser(login, name, lastName, email, note, password=None):
     """Adds user to database - when password is None then it will ask for it"""
@@ -38,47 +36,21 @@ def addUser(login, name, lastName, email, note, password=None):
         raise ScalakError("You have to specify, at least login, name, " \
                 "last name and email.")
 
-    con = openDB()
-    c = con.cursor()
-    c.execute('select login from users where login=%s limit 1', (login,))
-
-    if c.fetchone():
-        raise ScalakError("User already exists")
-
     if not password:
         password = getpass.getpass()
         password1 = getpass.getpass("Repeat password:")
         if not password or not password1:
             raise ScalakError("Password may not be empty")
+
         if not password1 == password:
             raise ScalakError("Passwords are not identical")
 
-    sha1pass = sha1()
-    sha1pass.update(password)
-    sha1pass = sha1pass.hexdigest()
-    htpass = htpasswd(password)
-
-    c.execute('insert into users values(%s, %s, %s, %s, %s,%s, %s)',
-        (login, name, lastName, email, htpass, sha1pass, note))
-    con.commit()
-    c.close()
-
+    utils.addUser(login, email, password, name, lastName, note)
 
 def removeUser(login):
     """Removes user from Scalak - user must not be admin of any project"""
-    con = openDB()
-    c = con.cursor()
-    c.execute('select id from projects where admin=%s', (login,))
-    proj = c.fetchmany()
-    if proj:
-        raise ScalakError("Can't remove user {0}, user is admin of some projects: {1}"
-                .format(login, ', '.join([p[0] for p in proj])))
-        
-    c.execute('delete from user_project where user=%s', (login,))
-    c.execute('delete from users where login=%s', (login,))
 
-    con.commit()
-    c.close()
+    utils.removeUser(login)
 
 def help():
     print "Scalak-users scalak users administration tool\n\n" \
@@ -89,9 +61,8 @@ def help():
                     "admin of any project\n" \
             "\tedit     not yet implemented \n\n"
 
-
-
 if __name__ == "__main__":
+
     if len(sys.argv) < 2:
         help()
         exit(1)
@@ -100,14 +71,17 @@ if __name__ == "__main__":
 
     if mode == "add":
         opt, arg = getopt.getopt(sys.argv[2:], 'n:p:')
+
         if len(arg) != 4:
             help()
             sys.exit(1)
+
         note = ""
         passw = None
         for o in opt:
             if o[0] == '-n':
                 note = o[1]
+
             if o[0] == '-p':
                 passw = o[1]
 
@@ -117,12 +91,11 @@ if __name__ == "__main__":
         if len(sys.argv) < 3:
             help()
             sys.exit(1)
+
         removeUser(sys.argv[2])
 
     elif mode == "edit":
         pass
+
     elif mode == "help":
         help()
-
-
-
