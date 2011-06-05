@@ -55,11 +55,12 @@ def removeUser(login):
 def help():
     print "Scalak-users scalak users administration tool\n\n" \
             "Usage: scalak-users [add|remove|edit|help] <fields> \n" \
-            "\tadd      [-p plain textpassword] [-n note] login name lastName " \
+            "\tadd\n[-p plain textpassword] [-n note] login name lastName " \
                     "email  - add user to data base\n" \
-            "\tremove   login - removes user from db - user must not be " \
+            "\tremove\tlogin - removes user from db - user must not be " \
                     "admin of any project\n" \
-            "\tedit     not yet implemented \n\n"
+            "\tedit\tlogin <field>=<new value> - if just fields name supplied " \
+                    "data would be read from STDOUTn" \
 
 if __name__ == "__main__":
 
@@ -95,7 +96,29 @@ if __name__ == "__main__":
         removeUser(sys.argv[2])
 
     elif mode == "edit":
-        pass
+        args = sys.argv[2:]
+        login = sys.argv[1]
+
+        for inp in args:
+            if '=' in inp:
+                field, value = inp.split("=")
+
+            else:
+                field = inp
+
+                if field == 'password':
+                    value = getpass.getpass()
+                    password1 = getpass.getpass("Repeat password:")
+
+                    if not value or not password1:
+                        raise ScalakError("Password must not be empty")
+
+                    if not password1 == value:
+                        raise ScalakError("Passwords are not identical")
+                else:
+                    value = raw_input('Please type field value: ')
+
+            edit_user(login, field, value)
 
     elif mode == "help":
         help()

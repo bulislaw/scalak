@@ -248,3 +248,35 @@ def removeUser(login):
 
     con.commit()
     c.close()
+
+def edit_user(login, field, value):
+    """Change user data if parameter is *NOT* None"""
+
+    buf = ""
+
+    if field == 'name':
+        buf = 'name="{0}" '.format(value)
+    if field == 'last_name':
+        buf  'last_name="{0}" '.format(value)
+    if field == 'email':
+        buf  'email="{0}" '.format(value)
+    if field == 'password':
+        sha1pass = sha1()
+        sha1pass.update(passwd)
+        sha1pass = sha1pass.hexdigest()
+        htpass = htpasswd(passwd)
+
+        buf = 'password="{0}", '.format(htpass)
+        buf += 'sha_password="{0}" '.format(sha1pass)
+    if field == 'note':
+        buf += 'note="{0}" '.format(value)
+    else:
+        raise ScalakError("No such field")
+
+    con = openDB()
+    c = con.cursor()
+
+    c.execute("update users set %s where login=%s", (buf, login))
+
+    con.commit()
+    c.close()
