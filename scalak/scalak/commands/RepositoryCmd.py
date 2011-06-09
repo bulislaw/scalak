@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import scalak.commands.common as common
+import scalak.services
 from scalak import Project, getClass
 from scalak.utils import *
 

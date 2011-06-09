@@ -29,6 +29,7 @@ import getopt
 
 from scalak.utils import *
 from scalak.commands import *
+from scalak.services import *
 
 def reloadApache():
     """Current user must be able to actually mess with sys services"""

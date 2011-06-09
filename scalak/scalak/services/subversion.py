@@ -19,6 +19,7 @@
 
 from string import Template
 import os
+from pkg_resources import resource_filename
 
 from scalak.utils import *
 from scalak.services import Repository
@@ -31,8 +32,8 @@ class Subversion(Repository):
     _command = "svn"
 
     _adminCommand = "svnadmin"
-    _apacheConfig = os.path.join(os.path.dirname(__file__), 'templates/svn/svn.conf')
-    _repoConfig = os.path.join(os.path.dirname(__file__),  "templates/svn/repo.conf")
+    _apacheConfig = resource_filename("scalak", 'templates/svn/svn.conf')
+    _repoConfig = resource_filename("scalak", "templates/svn/repo.conf")
 
     _svnPath = None
     _repoPath = None
@@ -56,7 +57,7 @@ class Subversion(Repository):
         super(Subversion, self).deploy(project, config)
         if self._name is None:
             self._name = self._stdname
-        self._svnPath = self._dir + self._project.id + "/repos/svn/" 
+        self._svnPath = self._dir + self._project.id + "/repos/svn/"
         self._repoPath = self._svnPath + self._name
         try:
             os.makedirs(self._repoPath)

@@ -25,7 +25,7 @@ Configuration
 1) Apache
    - Copy /etc/apache2/mods-available/authn_dbd.load to /etc/apache2/mods-enabled
    - Copy /etc/apache2/mods-available/dbd.load to /etc/apache2/mods-enabled
-   - Copy conf/dbd.conf *(tweaking may be necessary)*
+   - Copy conf/dbd.conf *(tweaking may be necessary)* to /etc/apache2/mods-enabled
    - Copy conf/scalak.conf to /etc/apache2/conf.d and make sure its executed
      *Note: there should be "Include /etc/apache2/conf.d/" somewhere in apache2.conf*
 

@@ -25,7 +25,6 @@ import getopt
 import getpass
 import sys
 import random
-from hashlib import sha1
 
 from scalak import utils
 
@@ -45,7 +44,7 @@ def addUser(login, name, lastName, email, note, password=None):
         if not password1 == password:
             raise ScalakError("Passwords are not identical")
 
-    utils.addUser(login, email, password, name, lastName, note)
+    utils.newUser(login, email, password, name, lastName, note)
 
 def removeUser(login):
     """Removes user from Scalak - user must not be admin of any project"""
@@ -55,7 +54,7 @@ def removeUser(login):
 def help():
     print "Scalak-users scalak users administration tool\n\n" \
             "Usage: scalak-users [add|remove|edit|help] <fields> \n" \
-            "\tadd\n[-p plain textpassword] [-n note] login name lastName " \
+            "\tadd\t[-p plain textpassword] [-n note] login name lastName " \
                     "email  - add user to data base\n" \
             "\tremove\tlogin - removes user from db - user must not be " \
                     "admin of any project\n" \
@@ -96,29 +95,32 @@ if __name__ == "__main__":
         removeUser(sys.argv[2])
 
     elif mode == "edit":
-        args = sys.argv[2:]
-        login = sys.argv[1]
+        if len(sys.argv) < 4:
+            help()
+            sys.exit(1)
 
-        for inp in args:
-            if '=' in inp:
-                field, value = inp.split("=")
+        login = sys.argv[2]
+        inp = sys.argv[3]
 
+        if '=' in inp:
+            field, value = inp.split("=")
+
+        else:
+            field = inp
+
+            if field == 'password':
+                value = getpass.getpass()
+                password1 = getpass.getpass("Repeat password:")
+
+                if not value or not password1:
+                    raise ScalakError("Password must not be empty")
+
+                if not password1 == value:
+                    raise ScalakError("Passwords are not identical")
             else:
-                field = inp
+                value = raw_input('Please type field value: ')
 
-                if field == 'password':
-                    value = getpass.getpass()
-                    password1 = getpass.getpass("Repeat password:")
-
-                    if not value or not password1:
-                        raise ScalakError("Password must not be empty")
-
-                    if not password1 == value:
-                        raise ScalakError("Passwords are not identical")
-                else:
-                    value = raw_input('Please type field value: ')
-
-            edit_user(login, field, value)
+        utils.edit_user(login, field, value)
 
     elif mode == "help":
         help()

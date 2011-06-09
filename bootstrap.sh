@@ -24,6 +24,14 @@ pushd scalakweb/scalakweb
 python setup.py install
 popd
 
+pushd /tmp
+svn co http://svn.edgewall.com/repos/trac/plugins/0.12/mercurial-plugin
+cd mercurial-plugin
+python setup.py install
+cd ..
+rm -rf mercurial-plugin
+popd
+
 cp -r scalakweb/scalakweb /var/scalak
 
 pushd /var/scalak/scalakweb

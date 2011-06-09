@@ -1,7 +1,7 @@
-from project import Project
 from mercurial import Mercurial
 from repository import Repository
 from subversion import Subversion
-from trac import Trac
+from mailman import Mailman
+from tracsrv import Trac
 
-__all__ = ['Project', 'Mercurial', 'Repository', 'Subversion', 'Trac']
+__all__ = ['Mailman', 'Mercurial', 'Repository', 'Subversion', 'Trac']

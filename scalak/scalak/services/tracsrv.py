@@ -23,6 +23,8 @@ import shutil
 import MySQLdb as db
 import stat
 
+from pkg_resources import resource_filename
+
 from trac.env import Environment as Env
 from trac.db.api import with_transaction
 from trac.perm import PermissionSystem
@@ -38,9 +40,9 @@ class Trac(Service):
 
     _dbSpec = "sqlite:db/trac.db"
     _command = "trac-admin"
-    _tracConfig = os.path.join(os.path.dirname(__file__),
+    _tracConfig = resource_filename("scalak",
             "templates/trac/trac.ini.template")
-    _apacheConfig = os.path.join(os.path.dirname(__file__),
+    _apacheConfig = resource_filename("scalak",
             "templates/trac/trac.conf")
 
     # For config file templates 

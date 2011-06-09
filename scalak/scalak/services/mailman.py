@@ -23,7 +23,7 @@ import shutil
 import sys
 
 from scalak.utils import *
-from scalak import registerService
+from scalak import registerService, Service
 
 class Mailman(Service):
     """Mailing list suport for Scalak

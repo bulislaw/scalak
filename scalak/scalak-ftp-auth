@@ -58,7 +58,7 @@ if __name__ == "__main__":
         print "end"
         sys.exit(1)
 
-    if not valid_password(user, passwd):
+    if not valid_password(None, user, passwd):
         print "auth_ok:-1"
         print "end"
         sys.exit(1)

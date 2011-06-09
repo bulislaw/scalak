@@ -23,6 +23,7 @@ import functools
 import sys
 from ConfigParser import SafeConfigParser, Error
 import MySQLdb as db
+from hashlib import sha1
 
 #XXX
 #XXX There is great need to add some status check in all DB operation
@@ -193,7 +194,8 @@ def htpasswd(password, slt=None):
 
     return crypt.crypt(password, salt())
 
-def valid_password(username, password):
+def valid_password(env, username, password):
+    """Check given auth data against DB; env may be None"""
 
     db = openDB()
     c = db.cursor()
@@ -253,30 +255,34 @@ def edit_user(login, field, value):
     """Change user data if parameter is *NOT* None"""
 
     buf = ""
+    print login, field, value, buf
 
     if field == 'name':
         buf = 'name="{0}" '.format(value)
-    if field == 'last_name':
-        buf  'last_name="{0}" '.format(value)
-    if field == 'email':
-        buf  'email="{0}" '.format(value)
-    if field == 'password':
+    elif field == 'last_name':
+        buf  = 'last_name="{0}" '.format(value)
+    elif field == 'email':
+        buf  = 'email="{0}" '.format(value)
+    elif field == 'password':
         sha1pass = sha1()
-        sha1pass.update(passwd)
+        sha1pass.update(value)
         sha1pass = sha1pass.hexdigest()
-        htpass = htpasswd(passwd)
+        htpass = htpasswd(value)
 
         buf = 'password="{0}", '.format(htpass)
         buf += 'sha_password="{0}" '.format(sha1pass)
-    if field == 'note':
+    elif field == 'note':
         buf += 'note="{0}" '.format(value)
     else:
         raise ScalakError("No such field")
 
+    print login, field, value, buf
+
     con = openDB()
     c = con.cursor()
+    print 'update users set {0} where login="{1}"'.format(buf, login)
 
-    c.execute("update users set %s where login=%s", (buf, login))
+    c.execute('update users set {0} where login="{1}"'.format(buf, login))
 
     con.commit()
     c.close()

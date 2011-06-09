@@ -17,7 +17,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import shutil
+
 from scalak.utils import *
+from scalak import Service
 
 class Repository(Service):
     """Base class for all repositories"""
@@ -40,7 +43,7 @@ class Repository(Service):
     def _connectTrac(self):
         """Connects repository to Trac"""
 
-        trac = self._project.getService(Trac._type)
+        trac = self._project.getService("trac")
         if len(trac):
             trac[0].addRepository(self._name, self._repoPath, self._subtype)
         else:
@@ -50,7 +53,7 @@ class Repository(Service):
     def _disconnectTrac(self):
         """Connects repository to Trac"""
 
-        trac = self._project.getService(Trac._type)
+        trac = self._project.getService("trac")
         if len(trac):
             trac[0].delRepository(self._name)
         else:

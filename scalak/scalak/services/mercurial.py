@@ -20,18 +20,21 @@
 import os
 import shutil
 import stat
+from pkg_resources import resource_filename
+from string import Template
 
+from scalak.project import registerService
+from repository import Repository
 from scalak.utils import *
-from scalak import registerService
 
 class Mercurial(Repository):
 
     _subtype = "hg"
     _command = "hg"
 
-    _apacheConfig =  os.path.join(os.path.dirname(__file__), 'templates/hg/hg.conf')
-    _hgConfig =  os.path.join(os.path.dirname(__file__), "templates/hg/hgweb.config")
-    _hgCgi =  os.path.join(os.path.dirname(__file__), 'templates/hg/hgwebdir.cgi')
+    _apacheConfig =  resource_filename("scalak", 'templates/hg/hg.conf')
+    _hgConfig =  resource_filename("scalak", "templates/hg/hgweb.config")
+    _hgCgi =  resource_filename("scalak", 'templates/hg/hgwebdir.cgi')
 
     _hgPath = None
     _repoPath = None
@@ -115,19 +118,20 @@ class Mercurial(Repository):
 
                 config = Template(tmp).safe_substitute(options)
 
-            with open(os.path.join(self._hgPath, 
+            with open(os.path.join(self._hgPath,
                     "hgweb.config"), "w") as confFile:
                 confFile.write(config)
 
         if not os.path.exists(os.path.join(self._hgPath, 'hgwebdir.cgi')):
-            shutil.copy2(os.path.join(os.path.dirname(__file__), 'templates/hg/hgwebdir.cgi'), 
+            shutil.copy2(resource_filename('scalak',
+                        'templates/hg/hgwebdir.cgi'),
                     os.path.join(self._hgPath, 'hgwebdir.cgi'))
-            os.chmod(os.path.join(self._hgPath, 'hgwebdir.cgi'), 
+            os.chmod(os.path.join(self._hgPath, 'hgwebdir.cgi'),
                     stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR |
-                    stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | 
+                    stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH |
                     stat.S_IXOTH)
 
-        shutil.copy2(os.path.join(os.path.dirname(__file__), 'templates/hg/hgrc'), 
+        shutil.copy2(resource_filename('scalak', 'templates/hg/hgrc'),
                 os.path.join(self._repoPath, '.hg'))
 
 registerService(Mercurial._type, Mercurial._subtype, Mercurial)

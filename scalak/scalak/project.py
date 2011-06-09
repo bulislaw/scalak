@@ -25,6 +25,7 @@ import shutil
 import MySQLdb as db
 from time import sleep
 import sys
+from pkg_resources import resource_filename
 
 from scalak.utils import *
 
@@ -83,7 +84,8 @@ class Project(object):
         self._services = []
         self._id = id
         self._config = config
-        self._apacheTemplate = os.path.join(os.path.dirname(__file__), 'templates/project.conf')
+        self._apacheTemplate = resource_filename('scalak',
+                'templates/project.conf')
         self._dir = '/var/scalak/projects/'
         self._path = None
 

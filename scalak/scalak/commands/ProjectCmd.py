@@ -45,7 +45,7 @@ remove
 
     def execute(self, command, project_name, cl_args, config):
         """Runs action connected with given command
-        
+
         command - string, command
         project_name - string, name of project to create
         loose - list, loose arguments
@@ -81,7 +81,7 @@ remove
         due = args.get('-e', None)
         today = datetime.date.today().isoformat()
 
-        project = Project(config, project_name, admin, date, due, brief, desc)
+        project = Project(config, project_name, admin, today, due, brief, desc)
         project.create()
         project.addService(Trac())
         project.addUser(admin)
