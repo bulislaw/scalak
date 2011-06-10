@@ -1,5 +1,5 @@
 ========================
-Scalak Instalation Guide
+Scalak Installation Guide
 ========================
 
 INSTALL
@@ -17,6 +17,7 @@ INSTALL
     - Mercurial
     - Pylons
     - Authkit
+    - PureFTPd
 
 
 Configuration
@@ -35,5 +36,10 @@ Configuration
         -- and its strongly recommended -- You have to change user data in 
         /etc/apache2/mods-enabled/dbd.conf and in python code)* #XXX
 
-3) # ./bootstrap.sh
+3) Check, personalize and run bootstrap.sh:
+   # ./bootstrap.sh
 
+4) Add following to autostart (/etc/rc.local or /etc/local.d/scalak.start
+   or whatever):
+
+    pure-authd -s /var/run/ftpd.sock -r /usr/share/scalak/scalak-ftp-auth

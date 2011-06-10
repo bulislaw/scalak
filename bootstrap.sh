@@ -39,6 +39,10 @@ easy_install ScalakWeb
 paster setup-app production.ini
 popd
 
+echo 1 > /etc/pure-ftpd/conf/MinUID
+echo /var/run/ftpd.sock > /etc/pure-ftpd/conf/ExtAuth
+ln -s /etc/pure-ftpd/conf/ExtAuth /etc/pure-ftpd/auth/extauth
+
 chown -R $wwwusr:$wwwgrp /var/scalak/* 
 
 /etc/init.d/apache2 restart

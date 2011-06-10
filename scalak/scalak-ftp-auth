@@ -22,8 +22,13 @@ Scalak ftp auth is authorization module for prueFTP ftp server, it is
 intended to be used with Scalak and Scalak data base schema.
 
 Usage:
-    pure-authd -s /var/run/ftpd.sock -r /usr/bin/ftp-auth-handler &
-    pure-ftpd  -lextauth:/var/run/ftpd.sock &
+    pure-authd -s /var/run/ftpd.sock -r <script>
+    pure-ftpd  -lextauth:/var/run/ftpd.sock
+
+Service configuration is a bit tricky:
+    * echo 1 > /etc/pure-ftpd/config/MinUID
+    * echo <script_path> > /etc/pure-ftpd/config/ExtAuth
+    * ln -s /etc/pure-ftpd/config/ExtAuth /etc/pure-ftpd/auth/extauth
 """
 
 from os import getenv, path
@@ -46,19 +51,19 @@ if __name__ == "__main__":
         gid = 33
 
     try:
-        dir = config.get("general", "projects_dir")
+        fdir = config.get("general", "projects_dir")
     except Error:
-        dir = "/var/scalak/projects"
+        fdir = "/var/scalak/projects"
 
-    user = getenv("AUTHD_ACCOUNT")
+    project = getenv("AUTHD_ACCOUNT")
     passwd = getenv("AUTHD_PASSWORD")
 
-    if not user or not passwd:
+    if not project or not passwd:
         print "auth_ok:-1"
         print "end"
         sys.exit(1)
 
-    if not valid_password(None, user, passwd):
+    if not valid_password(None, getAdmin(project), passwd):
         print "auth_ok:-1"
         print "end"
         sys.exit(1)
@@ -66,5 +71,5 @@ if __name__ == "__main__":
     print "auth_ok:1"
     print "uid:{0}".format(uid)
     print "gid:{0}".format(gid)
-    print "dir:{0}".format(path.join(dir, res[1],  "www/"))
+    print "dir:{0}".format(path.join(fdir, project,  "www/"))
     print "end"
