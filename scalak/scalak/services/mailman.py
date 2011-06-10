@@ -100,8 +100,8 @@ $LIST_NAME-unsubscribe:  "|/var/lib/mailman/mail/mailman unsubscribe mailman"
     def deploy(self, project, config):
         """Creates and connect mailman instance with Scalak
 
-        This part is kind of tricky becouse mailman provide minimal cli 
-        interface, that is definitly not sufficient.
+        This part is kind of tricky because mailman provide minimal cli
+        interface, that is definitely not sufficient.
 
 
         Parameters:
@@ -109,8 +109,8 @@ $LIST_NAME-unsubscribe:  "|/var/lib/mailman/mail/mailman unsubscribe mailman"
             config - ConfigParser.SafeconfigParser
 
         Complications:
-            Mailman is using SHA-digested passwords, Scalak (mostly becouse
-                of Apache) htpasswd. Most basic (and curently used) method
+            Mailman is using SHA-digested passwords, Scalak (mostly because
+                of Apache) htpasswd. Most basic (and currently used) method
                 to supply the SHA password is to keep it in db (they are
                 generated with htpasswd)
 
@@ -118,9 +118,9 @@ $LIST_NAME-unsubscribe:  "|/var/lib/mailman/mail/mailman unsubscribe mailman"
             * Reading configuration for mailman bin directory, aliases, alias
                 update command
             * Reading sha admin password (scalak keeps passwords in htpasswd
-                mainly becouse of apache, so i add additional field with sha
+                mainly because of apache, so i add additional field with sha
                 passwd)
-            * Then is kind of balck box - mailman internal callbacks, used
+            * Then is kind of black box - mailman internal callbacks, used
                 code from Mailman:bin/newlist
             * Configuration part - adding and updating aliases
         """
@@ -228,7 +228,8 @@ $LIST_NAME-unsubscribe:  "|/var/lib/mailman/mail/mailman unsubscribe mailman"
         if mm_cfg.MTA:
             modname = 'Mailman.MTA.' + mm_cfg.MTA
             __import__(modname)
-            print "Please note mailing list emails"
+            print "Please note down mailing list emails (You DON'T have to " \
+                    "add this aliases manually to /etc/aliases)"
             sys.modules[modname].create(mlist, quiet=True)
 
         self._newAliases()
@@ -396,6 +397,5 @@ $LIST_NAME-unsubscribe:  "|/var/lib/mailman/mail/mailman unsubscribe mailman"
             mlist.Save()
         finally:
             mlist.Unlock()
-
 
 registerService(Mailman._type, Mailman._subtype, Mailman)

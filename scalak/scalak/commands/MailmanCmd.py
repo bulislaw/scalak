@@ -20,12 +20,13 @@
 import scalak.commands.common as common
 from scalak import Project, getClass
 from scalak.utils import *
+from scalak.services import *
 
 class MailmanCmd(common.Command):
     _command = "mailman"
     _man = """
 mailman add [list-name]
-    add mailing list to the project. Full list name would be 
+    add mailing list to the project. Full list name would be
     <project-name>-<list-name>, default list-name is devel.
 
 mailman remove list-name
@@ -45,15 +46,18 @@ mailman remove list-name
         project.load(project_name, config)
 
         if cl_args[0] == "add":
-            self.add(project, cl_args, config) 
+            self.add(project, cl_args, config)
+
         elif cl_args[0] == "remove":
-            self.remove(project, cl_args, config) 
+            self.remove(project, cl_args, config)
+
         else:
             return -1
 
         return 0
 
     def add(self, project, cl_args, config):
+
         type = getClass("mailing", "mailman")
         if not type:
             raise ScalakError("Mailman add: no such service type. Please contact" \
@@ -62,6 +66,7 @@ mailman remove list-name
         name = None
         if len(cl_args) > 1:
             name = cl_args[1]
+
         project.addService(type(name))
 
         print "List added"
