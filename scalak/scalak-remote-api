@@ -19,18 +19,65 @@
 
 """ Scalak remote api, based on AMQP via RabbitMQ server
 
+PLEASE NOTE THAT THIS REMOTE API IS HIGHLY EXPERIMENTAL PROOF OF CONCEPT
+IT'S NOT INTENDED TO PRODUCTION USE AS YET
+
 Each method needs administrator credentials (user, password)
 
 Available methods:
     list_users() -> list of strings
-        return list of all users ids
+        Parameters:
+            None
+
+        Returns:
+            list of all users ids
+
+        Errors:
+            No
 
     get_userdata(login) -> list of strings
-        return login, name, last_name, email, note for user with given *id*
+        Parameters:
+            user login
+
+        Returns:
+            login, name, last_name, email, note for user with given *id*
+
+        Errors:
+            * No such user
 
     add_user(login, email, passwd, name, last_name, note) -> None
-        Add user - name, last_name, note may be None ("" in between and
-            blank at the end of parameter list)
+        Parameters:
+            name, last_name, note may be None ("" in between and
+                blank at the end of parameter list)
+
+        Returns:
+            None
+
+        Errors:
+            * User already exists
+
+    remove_user(id) -> none
+        Parameters:
+            id of user to remove
+
+        Return:
+            None
+
+        Errors:
+            * No such user
+            * Can't remove user that own projects
+
+    edit_user(id, field, value) -> none
+        Parameters:
+            id of user to edit
+            field to be changed (login can't be changed)
+            new value for field
+
+        Return:
+            None
+
+        Errors:
+            * No such user
 
 Request format:
     Arguments should be sent as Pickled string:
@@ -41,7 +88,7 @@ __version__ = 0.2
 __author__ = 'Bartosz Szatkowski <bulislaw@linux.com>'
 __license__ = 'GPL 3.0+'
 
-import cPickle
+import json
 import sys
 import pika
 
@@ -67,7 +114,7 @@ METHODS = {
 
 def send_response(channel, method, props, status, response):
 
-    body = cPickle.dumps((status, response))
+    body = json.dumps((status, response))
 
     channel.basic_publish(exchange = "", routing_key = props.reply_to,
             properties = pika.BasicProperties(correlation_id = \
@@ -79,7 +126,7 @@ def send_response(channel, method, props, status, response):
 def handle_request(channel, meth, props, body):
 
     try:
-        cred, method_name, args = cPickle.loads(body)
+        cred, method_name, args = json.loads(body)
     except:
         send_response(channel, meth, props, STATUS_ERROR_ARGS, None)
         return
@@ -91,7 +138,7 @@ def handle_request(channel, meth, props, body):
     cap = getCapabilities(cred[0])
 
     #XXX capabilities would be changed (to be more precise)
-    if not cap or cap[0][0] != "all" or cap[0][1] != "global":
+    if not cap or cap[0][1] != "all" or cap[0][0] != "global":
         send_response(channel, meth, props, STATUS_ERROR_CAP, None)
         return
 
@@ -102,6 +149,9 @@ def handle_request(channel, meth, props, body):
 
     try:
         if args:
+            args = [unicode(arg).encode("utf8") for arg in args
+                    if isinstance(arg, basestring)]
+
             result = method(*args)
         else:
             result = method()

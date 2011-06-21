@@ -19,6 +19,9 @@
 
 """ Scalak client, based on AMQP via RabbitMQ server
 
+PLEASE NOTE THAT THIS REMOTE API IS HIGHLY EXPERIMENTAL PROOF OF CONCEPT
+IT'S NOT INTENDED TO PRODUCTION USE AS YET
+
 Available methods:
     list_users() -> list of strings
         Parameters:
@@ -83,7 +86,7 @@ __version__ = 0.1
 __author__ = 'Bartosz Szatkowski <bulislaw@linux.com>'
 __license__ = 'GPL 3.0+'
 
-import cPickle
+import json
 import sys
 import uuid
 import getopt
@@ -103,6 +106,23 @@ STATUS_ERROR_RUNTIME = -5 # Feedback from remote function, info in second arg.
 def usage():
     print >> sys.stderr, "scalak-client [-p <plaint text password>] " \
             "<server ip> <user name> <function_name> <params>\n"
+
+def report_error(code, msg):
+
+    msg = msg or ""
+    basemsg = ""
+    if code == STATUS_ERROR_METHOD:
+        basemsg = "No such method"
+    elif code == STATUS_ERROR_ARGS:
+        basemsg = "Supplied parameters don't match function prototype"
+    elif code == STATUS_ERROR_LOGIN:
+        basemsg = "Wrong user name or password"
+    elif code == STATUS_ERROR_CAP:
+        basemsg = "User don't have required capabilities to perform this" \
+                "action - contact Scalak administrator"
+
+    print >> sys.stderr, "Error:", basemsg, msg
+    sys.exit(-1)
 
 class ScalakClient(object):
     def __init__(self, host):
@@ -130,7 +150,7 @@ class ScalakClient(object):
     def call(self, user, passwd, args):
 
         self.corr_id = self.gen_id()
-        body = cPickle.dumps(((user, passwd), self.method_name, args))
+        body = json.dumps(((user, passwd), self.method_name, args))
 
         self.channel.basic_publish(exchange = "", routing_key = SRV_QUEUE,
                 properties = pika.BasicProperties(
@@ -139,12 +159,14 @@ class ScalakClient(object):
                 body = body)
         self.channel.start_consuming()
 
-        resp = cPickle.loads(self.response)
+        resp = json.loads(self.response)
 
         # XXX handle errors
         if resp[0] == STATUS_OK:
             return resp[1]
-        return resp
+        print resp
+
+        report_error(resp[0], resp[1])
 
 class listusers_rpc(ScalakClient):
     method_name = "list_users"
@@ -212,5 +234,6 @@ if __name__ == "__main__":
     method = METHODS.get(fname, None)
     if not method:
         print >> sys.stderr, "No such method\n"
+        sys.exit(1)
 
     print method(ip).call(user, passwd, params)

@@ -51,6 +51,13 @@ def removeUser(login):
 
     utils.removeUser(login)
 
+def permission(add, login):
+    """Add or remove administration rights (full for the time being)"""
+
+    scope = "global"
+    action = "all"
+    utils.userPermission(add, login, scope, action)
+
 def help():
     print "Scalak-users scalak users administration tool\n\n" \
             "Usage: scalak-users [add|remove|edit|help] <fields> \n" \
@@ -59,7 +66,9 @@ def help():
             "\tremove\tlogin - removes user from db - user must not be " \
                     "admin of any project\n" \
             "\tedit\tlogin <field>=<new value> - if just fields name supplied " \
-                    "data would be read from STDOUTn" \
+                    "data would be read from STDOUT\n" \
+            "\tpermission\tadd|remove user - add or remove administration " \
+                    "rights\n" \
 
 if __name__ == "__main__":
 
@@ -93,6 +102,17 @@ if __name__ == "__main__":
             sys.exit(1)
 
         removeUser(sys.argv[2])
+
+    elif mode == "permission":
+        if len(sys.argv) < 4:
+            help()
+            sys.exit(1)
+
+        add = False
+        if sys.argv[2].lower() == "add":
+            add = True
+
+        permission(add, sys.argv[3])
 
     elif mode == "edit":
         if len(sys.argv) < 4:

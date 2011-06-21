@@ -82,6 +82,23 @@ def listUsers():
 
     return [x[0] for x in c.fetchall()]
 
+def userPermission(add, login, scope, action):
+
+    con = openDB()
+    c = con.cursor()
+
+    print add, login, scope, action
+
+    if add:
+        c.execute('insert into capabilities values (%s, %s, %s)', (login,
+                scope, action))
+    else:
+        c.execute('delete from capabilities where user=%s and action=%s' \
+                'and scope=%s', (login, action, scope))
+
+    con.commit()
+    c.close()
+
 def findUser(id, project = None):
     """Check if user with given _id_ exists globally or in _project_ if given"""
 
@@ -142,6 +159,9 @@ def getUserData(id):
 
     db = openDB()
     c = db.cursor()
+
+    if not findUser(id):
+        raise ScalakError("User doesn't exists")
 
     c.execute('select login, name, last_name, email, note from users where \
             login=%s limit 1', (id,))
@@ -282,7 +302,6 @@ def edit_user(login, field, value):
     """Change user data if parameter is *NOT* None"""
 
     buf = ""
-    print login, field, value, buf
 
     if field == 'name':
         buf = 'name="{0}" '.format(value)
@@ -303,11 +322,8 @@ def edit_user(login, field, value):
     else:
         raise ScalakError("No such field")
 
-    print login, field, value, buf
-
     con = openDB()
     c = con.cursor()
-    print 'update users set {0} where login="{1}"'.format(buf, login)
 
     c.execute('update users set {0} where login="{1}"'.format(buf, login))
 

@@ -1,4 +1,4 @@
-include scalak-admin LICENSE README scalak-users scalak-info scalak.conf scalak-ftp-auth
+include scalak-admin LICENSE README scalak-users scalak-info scalak.conf scalak-ftp-auth scalak-remote-api
 recursive-include scalak/templates *.conf
 recursive-include scalak/templates/svn *
 recursive-include scalak/templates/hg *

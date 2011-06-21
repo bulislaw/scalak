@@ -16,5 +16,6 @@ setup(
             "templates/hg/*", "templates/trac/*"]},
     scripts=["scalak-admin", "scalak-users", "scalak-info"],
     data_files=[("/etc/", ["scalak.conf"]),
-                ("/usr/share/scalak", ["scalak-ftp-auth"])]
+                ("/usr/sbin", ["scalak-ftp-auth",
+			"scalak-remote-api"])]
 )
