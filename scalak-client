@@ -1,0 +1,216 @@
+#!/usr/bin/env python
+# -*-coding: utf-8 -*-
+
+# Scalak
+# Copyright 2010 Bartosz Szatkowski <bulislaw@linux.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+""" Scalak client, based on AMQP via RabbitMQ server
+
+Available methods:
+    list_users() -> list of strings
+        Parameters:
+            None
+
+        Returns:
+            list of all users ids
+
+        Errors:
+            No
+
+    get_userdata(login) -> list of strings
+        Parameters:
+            user login
+
+        Returns:
+            login, name, last_name, email, note for user with given *id*
+
+        Errors:
+            * No such user
+
+    add_user(login, email, passwd, name, last_name, note) -> None
+        Parameters:
+            name, last_name, note may be None ("" in between and
+                blank at the end of parameter list)
+
+        Returns:
+            None
+
+        Errors:
+            * User already exists
+
+    remove_user(id) -> none
+        Parameters:
+            id of user to remove
+
+        Return:
+            None
+
+        Errors:
+            * No such user
+            * Can't remove user that own projects
+
+    edit_user(id, field, value) -> none
+        Parameters:
+            id of user to edit
+            field to be changed (login can't be changed)
+            new value for field
+
+        Return:
+            None
+
+        Errors:
+            * No such user
+
+Request format:
+    Arguments should be sent as Pickled string:
+        ((<login>, <password>), <method name>, [list of method parameters])
+"""
+
+__version__ = 0.1
+__author__ = 'Bartosz Szatkowski <bulislaw@linux.com>'
+__license__ = 'GPL 3.0+'
+
+import cPickle
+import sys
+import uuid
+import getopt
+import getpass
+
+import pika
+
+SRV_QUEUE = "scalak_requests"
+
+STATUS_OK = 0 # Everything in order
+STATUS_ERROR_METHOD = -1 # No such method
+STATUS_ERROR_ARGS = -2 # Args in wrong format
+STATUS_ERROR_LOGIN = -3 # Supplied credential incorrect
+STATUS_ERROR_CAP = -4 # User rights are to low to finish this action
+STATUS_ERROR_RUNTIME = -5 # Feedback from remote function, info in second arg.
+
+def usage():
+    print >> sys.stderr, "scalak-client [-p <plaint text password>] " \
+            "<server ip> <user name> <function_name> <params>\n"
+
+class ScalakClient(object):
+    def __init__(self, host):
+
+        self.conn = pika.BlockingConnection(
+                pika.ConnectionParameters(host = host))
+
+        self.channel = self.conn.channel()
+        res = self.channel.queue_declare(exclusive = True)
+        self.callback_queue = res.method.queue
+
+        self.channel.basic_consume(self.handle_resp, no_ack = True,
+                queue = self.callback_queue)
+
+    def handle_resp(self, ch, meth, props, body):
+
+        if self.corr_id == props.correlation_id:
+            self.response = body
+            self.channel.stop_consuming()
+
+    def gen_id(self):
+
+        return str(uuid.uuid4())
+
+    def call(self, user, passwd, args):
+
+        self.corr_id = self.gen_id()
+        body = cPickle.dumps(((user, passwd), self.method_name, args))
+
+        self.channel.basic_publish(exchange = "", routing_key = SRV_QUEUE,
+                properties = pika.BasicProperties(
+                    reply_to = self.callback_queue,
+                    correlation_id = self.corr_id),
+                body = body)
+        self.channel.start_consuming()
+
+        resp = cPickle.loads(self.response)
+
+        # XXX handle errors
+        if resp[0] == STATUS_OK:
+            return resp[1]
+        return resp
+
+class listusers_rpc(ScalakClient):
+    method_name = "list_users"
+
+class getuserdata_rpc(ScalakClient):
+    method_name = "get_userdata"
+
+class newuser_rpc(ScalakClient):
+    method_name = "new_user"
+
+    def call(self, user, passwd, args):
+        args.extend([None] * (6 - len(args)))
+
+        return super(newuser_rpc, self).call(user, passwd, args)
+
+class listprojects_rpc(ScalakClient):
+    method_name = "list_projects"
+
+class removeuser_rpc(ScalakClient):
+    method_name = "remove_user"
+
+class edituser_rpc(ScalakClient):
+    method_name = "edit_user"
+
+METHODS = {
+    "list_users" : listusers_rpc,
+    "get_userdata" : getuserdata_rpc,
+    "new_user" : newuser_rpc,
+    "remove_user" : removeuser_rpc,
+    "edit_user" : edituser_rpc
+}
+
+if __name__ == "__main__":
+
+    try:
+        opt, args = getopt.getopt(sys.argv[1:], 'u:p:')
+    except getopt.GetoptError, err:
+        print str(err)
+        usage()
+        sys.exit(2)
+
+    passwd = None
+    for o, a in opt:
+        if o == "-p":
+            passwd = a
+        else:
+            usage()
+            sys.exit(2)
+
+    if len(args) < 3:
+        usage()
+        sys.exit(2)
+
+    ip = args[0]
+    user = args[1]
+    fname = args[2]
+
+    params = None
+    if len(args) > 3:
+        params = args[3:]
+
+    if not passwd:
+        passwd = getpass.getpass()
+
+    method = METHODS.get(fname, None)
+    if not method:
+        print >> sys.stderr, "No such method\n"
+
+    print method(ip).call(user, passwd, params)

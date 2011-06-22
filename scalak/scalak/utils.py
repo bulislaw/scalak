@@ -59,6 +59,29 @@ def openDB():
 
     return db.connect(host = host, user = user, passwd = passwd, db = dbname)
 
+def getCapabilities(user):
+
+    db = openDB()
+    c = db.cursor()
+
+    res = c.execute("select action, scope from capabilities where user = %s",
+            (user,))
+
+    db.close()
+
+    return c.fetchall()
+
+def listUsers():
+    """Return list of ids for all users"""
+
+    db = openDB()
+    c = db.cursor()
+
+    res = c.execute("select login from users")
+    db.close()
+
+    return [x[0] for x in c.fetchall()]
+
 def findUser(id, project = None):
     """Check if user with given _id_ exists globally or in _project_ if given"""
 
@@ -200,7 +223,8 @@ def valid_password(env, username, password):
     db = openDB()
     c = db.cursor()
 
-    res = c.execute("select password from users where login=%s limit 1", (username,))
+    res = c.execute("select password from users where login=%s limit 1",
+            (username,))
 
     if not res:
         return False
@@ -240,10 +264,13 @@ def removeUser(login):
     con = openDB()
     c = con.cursor()
 
-    if getOwnedProject(login):
+    if not findUser(login):
+        raise ScalakError("No such user")
+
+    proj = getOwnedProject(login)
+    if proj:
         raise ScalakError("Can't remove user {0}, user is admin of " \
-                "some projects: {1}"
-                .format(login, ', '.join([p[0] for p in proj])))
+                "some projects".format(login, ', '.join([p[0] for p in proj])))
 
     c.execute('delete from user_project where user=%s', (login,))
     c.execute('delete from users where login=%s', (login,))

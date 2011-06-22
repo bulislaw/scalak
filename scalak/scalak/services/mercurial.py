@@ -42,8 +42,6 @@ class Mercurial(Repository):
     def __init__(self, name = None):
         self._name = name
 
-
-
     def deploy(self, project, config):
         super(Mercurial, self).deploy(project, config)
 

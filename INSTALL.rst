@@ -42,4 +42,5 @@ Configuration
 4) Add following to autostart (/etc/rc.local or /etc/local.d/scalak.start
    or whatever):
 
-    pure-authd -s /var/run/ftpd.sock -r /usr/share/scalak/scalak-ftp-auth
+    pure-authd -s /var/run/ftp.sock -r /usr/share/scalak/scalak-ftp-auth &
+    pure-ftpd -l pam -l extauth:/var/run/ftp.sock -8 UTF-8 -u 0 -O clf:/var/log/pure-ftpd/transfer.log -E -B &

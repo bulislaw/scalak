@@ -1,0 +1,126 @@
+#!/usr/bin/env python
+# -*-coding: utf-8 -*-
+
+# Scalak
+# Copyright 2010 Bartosz Szatkowski <bulislaw@linux.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+""" Scalak remote api, based on AMQP via RabbitMQ server
+
+Each method needs administrator credentials (user, password)
+
+Available methods:
+    list_users() -> list of strings
+        return list of all users ids
+
+    get_userdata(login) -> list of strings
+        return login, name, last_name, email, note for user with given *id*
+
+    add_user(login, email, passwd, name, last_name, note) -> None
+        Add user - name, last_name, note may be None ("" in between and
+            blank at the end of parameter list)
+
+Request format:
+    Arguments should be sent as Pickled string:
+        ((<login>, <password>), <method name>, [list of method parameters])
+"""
+
+__version__ = 0.2
+__author__ = 'Bartosz Szatkowski <bulislaw@linux.com>'
+__license__ = 'GPL 3.0+'
+
+import cPickle
+import sys
+import pika
+
+from scalak.utils import *
+
+SRV_HOST = "localhost"
+SRV_QUEUE = "scalak_requests"
+
+STATUS_OK = 0 # Everything in order
+STATUS_ERROR_METHOD = -1 # No such method
+STATUS_ERROR_ARGS = -2 # Args in wrong format
+STATUS_ERROR_LOGIN = -3 # Supplied credential incorrect
+STATUS_ERROR_CAP = -4 # User rights are to low to finish this action
+STATUS_ERROR_RUNTIME = -5 # Feedback from remote function, info in second arg.
+
+METHODS = {
+    "list_users" : listUsers,
+    "get_userdata" : getUserData,
+    "new_user" : newUser,
+    "remove_user" : removeUser,
+    "edit_user" : edit_user
+}
+
+def send_response(channel, method, props, status, response):
+
+    body = cPickle.dumps((status, response))
+
+    channel.basic_publish(exchange = "", routing_key = props.reply_to,
+            properties = pika.BasicProperties(correlation_id = \
+                    props.correlation_id),
+            body = body)
+
+    channel.basic_ack(delivery_tag = method.delivery_tag)
+
+def handle_request(channel, meth, props, body):
+
+    try:
+        cred, method_name, args = cPickle.loads(body)
+    except:
+        send_response(channel, meth, props, STATUS_ERROR_ARGS, None)
+        return
+
+    if not valid_password(None, cred[0], cred[1]):
+        send_response(channel, meth, props, STATUS_ERROR_LOGIN, None)
+        return
+
+    cap = getCapabilities(cred[0])
+
+    #XXX capabilities would be changed (to be more precise)
+    if not cap or cap[0][0] != "all" or cap[0][1] != "global":
+        send_response(channel, meth, props, STATUS_ERROR_CAP, None)
+        return
+
+    method = METHODS.get(method_name, None)
+    if not method:
+        send_response(channel, meth, props, STATUS_ERROR_METHOD, None)
+        return
+
+    try:
+        if args:
+            result = method(*args)
+        else:
+            result = method()
+    except TypeError:
+        send_response(channel, meth, props, STATUS_ERROR_ARGS, None)
+        return
+    except ScalakError as err:
+        send_response(channel, meth, props, STATUS_ERROR_RUNTIME, err.value)
+        return
+
+    send_response(channel, meth, props, STATUS_OK, result)
+
+if __name__ == "__main__":
+
+    conn = pika.BlockingConnection(pika.ConnectionParameters(host=SRV_HOST))
+
+    channel = conn.channel()
+    channel.queue_declare(queue = SRV_QUEUE)
+    channel.basic_qos(prefetch_count = 1)
+    channel.basic_consume(handle_request, queue = SRV_QUEUE)
+
+    channel.start_consuming()

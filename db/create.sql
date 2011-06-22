@@ -12,6 +12,13 @@ create table users (
     sha_password varchar(50),
     note text);
 
+create table capabilities (
+    user varchar(30),
+    action varchar(30),
+    scope varchar(30),
+    foreign key (user) references users(login),
+    primary key (user, action, scope));
+
 create table projects (
     id varchar(30) primary key,
     admin varchar(30),
