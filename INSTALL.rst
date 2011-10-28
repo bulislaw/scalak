@@ -32,10 +32,10 @@ Configuration
      *Note: there should be "Include /etc/apache2/conf.d/" somewhere in apache2.conf*
 
 2) MySQL
-   - Execute db/create.sql as MySQL root *(Note; be aware that for now there is no
-        automatic way to change db user data, if You want to change default ones
+   - Execute db/create.sql as MySQL root *Note; be aware that for now this is only
+        experimental feature and may need additional tweaking, if You want to change default ones
         -- and its strongly recommended -- You have to change user data in 
-        /etc/apache2/mods-enabled/dbd.conf and in python code)* #XXX
+        /etc/apache2/mods-enabled/dbd.conf and in db/create.sql and in /etc/scalak.conf* #XXX
 
 3) Check, personalize and run bootstrap.sh:
    # ./bootstrap.sh
